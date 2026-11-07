@@ -41,7 +41,22 @@
 | `python3 next/verify_repo.py` | **10/10 通过** |
 | `python3 -m unittest discover -s tests -v` | **25/25 通过** |
 | `bash scripts/verify-next.sh` | **ALL CHECKS PASSED** |
-| GitHub Actions `build-next.yml` 完整构建 | 推送后验证（见本节末尾更新） |
+| GitHub Actions `build-next.yml` 完整构建 | **success**（run `42370477749`，debug，约 7 分钟，见下方） |
+
+### 推送与 CI 结果（2026-11-07）
+
+- **推送方式**：本轮 `github.com` 直连不可达（`api.github.com` 可达），改用 GitHub Git Data
+  API 重建 commit 并更新 `refs/heads/next`。两个 commit 的 **tree SHA 与 commit SHA 均与
+  本地完全一致**，远端 `next` = `72a4d9a13`，本地与远端无分叉。
+- **自动静态校验**（`magisk-Next CI`，run `42370394500`）：**success**。日志确认
+  `native guards 12/12`、仓库校验 `10/10`、25 个单测、`rustfmt` 5 个文件可解析、
+  `ALL CHECKS PASSED`。
+- **完整构建**（`magisk-Next Build`，run `42370477749`）：**success**。日志确认
+  `Compiling magisk v0.0.0 (.../native/src/core)` —— `thread.rs` / `daemon.rs` /
+  `mount.rs` / `su/daemon.rs` / `zygisk/daemon.rs` 真实编译通过；
+  `[arm64-v8a] Compile++ : magisk <= utils.cpp` / `entry.cpp` / `module.cpp` 等
+  C++ 改动同样编译通过；`BUILD SUCCESSFUL`；`integrity.py verify` 全部通过。
+- **产物**：37.74 MB 主 artifact（`app-debug.apk` / `test.apk`）+ 2.71 MB 符号表。
 
 ### 诚实标注
 

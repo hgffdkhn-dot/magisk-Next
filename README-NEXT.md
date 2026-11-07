@@ -57,7 +57,7 @@ python3 next/native_audit.py                    # 校验 12 组 native 修复未
 - `next/native_audit.py`：**12/12 规则、60 项断言**通过
 - `rustfmt --edition 2024` 语法解析：5 个改动的 Rust 文件全部可解析
 - `bash scripts/verify-next.sh` → `ALL CHECKS PASSED`，含快照 `capture→diff→verify→restore` 与通道清单的真实 CLI 冒烟
-- GitHub Actions 完整构建：上一轮实跑 **success**（39.6 MB 产物 + 符号表）；本轮 native 改动以推送后 CI 结果为准
+- GitHub Actions 完整构建：上一轮 **success**（39.6 MB 产物）；**本轮 native 改动完整构建 success**（run `42370477749`，37.74 MB + 2.71 MB 符号表）。日志确认 `Compiling magisk v0.0.0 (.../native/src/core)` 与 `[arm64-v8a] Compile++ : magisk <= utils.cpp / entry.cpp / module.cpp` 全部编译通过，`BUILD SUCCESSFUL`
 
 ## 已知限制
 

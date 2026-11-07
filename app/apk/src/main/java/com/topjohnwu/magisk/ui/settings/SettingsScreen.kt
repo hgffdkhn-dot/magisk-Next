@@ -224,6 +224,10 @@ fun SettingsContent(
                         )
                     }
                 }
+                // magisk-Next: self-contained section, no uiState changes required
+                Column {
+                    NextSection()
+                }
             },
         )
     }

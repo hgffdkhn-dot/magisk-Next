@@ -270,10 +270,16 @@ def write_if_diff(file_name: Path, text: str):
 
 
 def dump_flags_native():
+    # magisk-Next: brand/channel are baked into native binaries so that
+    # `magisk -v` and the daemon can identify the fork without runtime config.
+    next_brand = config.get("nextBrand", "magisk-Next")
+    next_channel = config.get("nextChannel", "")
     flag_txt = "#pragma once\n"
     flag_txt += f'#define MAGISK_VERSION      "{config["version"]}"\n'
     flag_txt += f'#define MAGISK_VER_CODE     {config["versionCode"]}\n'
     flag_txt += f"#define MAGISK_DEBUG        {0 if args.release else 1}\n"
+    flag_txt += f'#define NEXT_BRAND          "{next_brand}"\n'
+    flag_txt += f'#define NEXT_CHANNEL        "{next_channel}"\n'
 
     native_gen_path = Path("native", "out", "generated")
     native_gen_path.mkdir(mode=0o755, parents=True, exist_ok=True)
@@ -299,8 +305,12 @@ def dump_flags_native():
             cert = ssl.PEM_cert_to_DER_cert(pem)
 
     cert_hex = ", ".join(f"0x{b:02x}" for b in cert)
+    next_brand = config.get("nextBrand", "magisk-Next")
+    next_channel = config.get("nextChannel", "")
     rust_flag_txt = f'pub const MAGISK_VERSION: &str = "{config["version"]}";\n'
     rust_flag_txt += f'pub const MAGISK_VER_CODE: i32 = {config["versionCode"]};\n'
+    rust_flag_txt += f'pub const NEXT_BRAND: &str = "{next_brand}";\n'
+    rust_flag_txt += f'pub const NEXT_CHANNEL: &str = "{next_channel}";\n'
     rust_flag_txt += f"pub const TRUSTED_CERT: &[u8] = &[{cert_hex}];\n"
     write_if_diff(native_gen_path / "flags.rs", rust_flag_txt)
 
@@ -331,6 +341,11 @@ def dump_flags_app():
     flag_txt = f"abiList={','.join(build_abis.keys())}\n"
     flag_txt += f"version={config['version']}\n"
     flag_txt += f"versionCode={config['versionCode']}\n"
+    # magisk-Next: consumed by app/build-logic as extra BuildConfig fields
+    flag_txt += f"nextBrand={config.get('nextBrand', 'magisk-Next')}\n"
+    flag_txt += f"nextChannel={config.get('nextChannel', '')}\n"
+    flag_txt += f"nextModuleSnapshot={config.get('nextModuleSnapshot', '1')}\n"
+    flag_txt += f"nextChannelVerify={config.get('nextChannelVerify', '1')}\n"
 
     app_build_dir = Path("app", "build")
     app_build_dir.mkdir(parents=True, exist_ok=True)
@@ -782,6 +797,20 @@ def load_config():
     for key, value in parse_props(gradle_props).items():
         if key.startswith("magisk."):
             config[key[7:]] = value
+
+    # magisk-Next: map `next.*` properties from config.prop to internal keys.
+    # Using explicit mapping keeps the naming consistent across Python/Gradle.
+    next_props = {
+        "next.brand": ("nextBrand", "magisk-Next"),
+        "next.channel": ("nextChannel", ""),
+        "next.moduleSnapshot": ("nextModuleSnapshot", "1"),
+        "next.channelVerify": ("nextChannelVerify", "1"),
+    }
+    for prop, (key, default) in next_props.items():
+        config[key] = config.get(prop, default)
+        config.pop(prop, None)
+    if config["nextChannel"] and not config["nextChannel"].startswith("https://"):
+        error('Config error: "next.channel" must be an HTTPS URL')
 
     try:
         config["versionCode"] = int(config["versionCode"])

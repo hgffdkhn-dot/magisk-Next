@@ -240,4 +240,13 @@
     <string name="reboot_apply_change">Reboot to apply changes</string>
     <string name="running_exit_title">Execution in progress</string>
     <string name="running_exit_msg">Are you sure you want to exit? The running operation may not complete.</string>
+
+    <!-- magisk-Next -->
+    <string name="next_section_title">magisk-Next</string>
+    <string name="next_snapshot_title">Module snapshot</string>
+    <string name="next_snapshot_summary">Snapshot module state before changes so a failed flash can be rolled back</string>
+    <string name="next_channel_verify_title">Verify update channel</string>
+    <string name="next_channel_verify_summary">Validate the update manifest signature before applying an update</string>
+    <string name="next_health_check_title">Health check</string>
+    <string name="next_health_check_summary">Collect Magisk, Zygisk and DenyList status for diagnostics</string>
 </resources>

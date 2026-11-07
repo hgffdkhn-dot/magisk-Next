@@ -26,3 +26,24 @@ keyStorePass=string
 keyAlias=string
 # Password of specified key alias
 keyPass=string
+
+#########################################################
+# magisk-Next specific options (all optional)
+# These are consumed by build.py and baked into flags.h / flags.rs / flags.prop
+#########################################################
+
+# Branch label embedded in native binaries and app BuildConfig.
+# Default: magisk-Next
+next.brand=magisk-Next
+
+# HTTPS URL of the magisk-Next update channel manifest.
+# Leave empty to stay on the upstream update channel. Must start with https://.
+next.channel=
+
+# Take a module snapshot before module changes (1 = on, 0 = off).
+# Default: 1
+next.moduleSnapshot=1
+
+# Verify the update channel manifest before applying an update.
+# Default: 1
+next.channelVerify=1

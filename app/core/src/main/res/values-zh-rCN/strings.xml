@@ -240,4 +240,13 @@
     <string name="reboot_apply_change">重启后生效</string>
     <string name="running_exit_title">正在执行中</string>
     <string name="running_exit_msg">确定要退出吗？当前正在进行的操作可能无法完成。</string>
+
+    <!-- magisk-Next -->
+    <string name="next_section_title">magisk-Next</string>
+    <string name="next_snapshot_title">模块快照</string>
+    <string name="next_snapshot_summary">变更模块前记录状态，刷入失败可回滚</string>
+    <string name="next_channel_verify_title">校验更新通道</string>
+    <string name="next_channel_verify_summary">应用更新前校验通道清单签名</string>
+    <string name="next_health_check_title">运行体检</string>
+    <string name="next_health_check_summary">汇总 Magisk、Zygisk 与排除列表状态用于诊断</string>
 </resources>

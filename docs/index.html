@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>magisk-Next · 分支技术档案</title>
+<meta name="description" content="基于 topjohnwu/Magisk master (v31.1+) 的第三方分支：调研数据、改动地图与验证状态。">
+<style>
+  :root {
+    color-scheme: light;
+    --paper: oklch(0.965 0.013 85);
+    --paper-deep: oklch(0.925 0.018 82);
+    --ink: oklch(0.235 0.024 55);
+    --ink-soft: oklch(0.45 0.02 60);
+    --ink-faint: oklch(0.62 0.015 65);
+    --rule: oklch(0.79 0.016 75);
+    --vermilion: oklch(0.53 0.185 32);
+    --teal: oklch(0.44 0.085 205);
+    --moss: oklch(0.48 0.095 155);
+    --amber: oklch(0.66 0.13 75);
+    --serif: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans CJK SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --mono: ui-monospace, 'SFMono-Regular', 'Cascadia Code', 'JetBrains Mono', Consolas, monospace;
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    background-image: repeating-linear-gradient(
+      to bottom, transparent 0, transparent 31px,
+      oklch(0.88 0.012 80 / 0.35) 31px, oklch(0.88 0.012 80 / 0.35) 32px);
+  }
+  a { color: inherit; text-decoration: none; }
+  a:focus-visible, button:focus-visible {
+    outline: 2px solid var(--vermilion); outline-offset: 3px;
+  }
+  .skip {
+    position: absolute; left: -9999px; top: 0;
+    background: var(--ink); color: var(--paper); padding: 8px 14px; z-index: 99;
+  }
+  .skip:focus { left: 12px; top: 12px; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 clamp(20px, 5vw, 72px); }
+
+  /* ---------- masthead ---------- */
+  header.masthead { border-bottom: 1px solid var(--ink); padding-bottom: 22px; }
+  .topline {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 16px; padding: 20px 0 4px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .topline .stamp { color: var(--vermilion); }
+  .hero {
+    display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(260px, .65fr);
+    gap: clamp(24px, 5vw, 72px); align-items: end; padding: 30px 0 44px;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(3.6rem, 11vw, 8.4rem);
+    line-height: .88; letter-spacing: -.045em; margin: 0;
+  }
+  h1 em { font-style: italic; color: var(--vermilion); }
+  .hero-sub {
+    font-family: var(--serif); font-size: clamp(1.1rem, 2vw, 1.5rem);
+    line-height: 1.5; color: var(--ink-soft); margin: 22px 0 0; max-width: 34ch;
+  }
+  .hero-side { border-left: 1px solid var(--rule); padding-left: 24px; }
+  .hero-side dl { margin: 0; font-family: var(--mono); font-size: 12px; }
+  .hero-side dt { color: var(--ink-faint); letter-spacing: .1em; text-transform: uppercase; margin-top: 12px; }
+  .hero-side dt:first-child { margin-top: 0; }
+  .hero-side dd { margin: 2px 0 0; color: var(--ink); word-break: break-all; }
+  .diffbar {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .02em;
+    border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+    padding: 9px 0; display: flex; gap: 24px; flex-wrap: wrap;
+  }
+  .diffbar .minus { color: var(--vermilion); }
+  .diffbar .plus { color: var(--moss); }
+  .diffbar .meta { color: var(--ink-faint); margin-left: auto; }
+
+  /* ---------- metric rail ---------- */
+  .rail-wrap { container-type: inline-size; }
+  .rail {
+    display: grid; grid-template-columns: repeat(5, 1fr);
+    border-bottom: 1px solid var(--ink); margin: 0;
+  }
+  .rail div { padding: 26px 18px 24px 0; border-right: 1px solid var(--rule); }
+  .rail div:last-child { border-right: 0; }
+  .rail b {
+    display: block; font-family: var(--serif); font-weight: 400;
+    font-size: clamp(2.2rem, 4.6vw, 3.6rem); line-height: 1;
+    letter-spacing: -.04em; font-variant-numeric: tabular-nums;
+  }
+  .rail span {
+    display: block; margin-top: 10px; font-family: var(--mono);
+    font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+  .rail b.hl { color: var(--vermilion); }
+  @container (max-width: 720px) {
+    .rail { grid-template-columns: repeat(2, 1fr); }
+    .rail div { border-bottom: 1px solid var(--rule); }
+  }
+
+  /* ---------- sections ---------- */
+  section { padding: clamp(48px, 7vw, 88px) 0 0; }
+  .sec-head {
+    display: grid; grid-template-columns: 92px minmax(0, 1fr);
+    gap: 24px; align-items: baseline; border-bottom: 1px solid var(--ink);
+    padding-bottom: 14px; margin-bottom: 32px;
+  }
+  .sec-num {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+    color: var(--vermilion);
+  }
+  h2 {
+    font-family: var(--serif); font-weight: 400;
+    font-size: clamp(1.9rem, 4vw, 2.9rem); letter-spacing: -.025em;
+    line-height: 1.15; margin: 0;
+  }
+  .lede { font-size: 15px; color: var(--ink-soft); max-width: 72ch; margin: 0 0 26px; }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  /* baseline chart */
+  .chart { display: grid; gap: 2px; font-family: var(--mono); font-size: 12px; }
+  .row {
+    display: grid; grid-template-columns: 72px minmax(0, 1fr) 62px;
+    gap: 14px; align-items: center; padding: 5px 0;
+    transition: background .35s var(--ease), padding .35s var(--ease);
+  }
+  .row:hover { background: oklch(0.9 0.02 82 / .6); padding-left: 8px; }
+  .row .tag { color: var(--ink-soft); }
+  .row .track { height: 9px; background: var(--paper-deep); position: relative; overflow: hidden; }
+  .row .fill { position: absolute; inset: 0 auto 0 0; background: var(--rule); transition: width .9s var(--ease); }
+  .row .val { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+  .row.win .tag, .row.win .val { color: var(--vermilion); font-weight: 700; }
+  .row.win .fill { background: var(--vermilion); }
+  .chart-note {
+    margin-top: 18px; padding-left: 14px; border-left: 2px solid var(--vermilion);
+    font-size: 13.5px; color: var(--ink-soft); max-width: 78ch;
+  }
+
+  /* tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--rule); margin-bottom: 0; }
+  .tabs button {
+    appearance: none; background: none; border: 0; cursor: pointer;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-faint);
+    padding: 12px 20px 12px 0; margin-right: 22px; position: relative;
+    transition: color .3s var(--ease);
+  }
+  .tabs button::after {
+    content: ''; position: absolute; left: 0; right: 22px; bottom: -1px;
+    height: 2px; background: var(--vermilion); transform: scaleX(0);
+    transform-origin: left; transition: transform .45s var(--ease);
+  }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button[aria-selected="true"] { color: var(--ink); }
+  .tabs button[aria-selected="true"]::after { transform: scaleX(1); }
+  .panel { padding-top: 26px; }
+  .panel[hidden] { display: none; }
+
+  .filelist { font-family: var(--mono); font-size: 12.5px; line-height: 1.85; }
+  .filelist .line {
+    display: grid; grid-template-columns: 22px minmax(0, 1fr);
+    gap: 12px; padding: 2px 0; border-bottom: 1px dotted var(--rule);
+  }
+  .filelist .line:hover { background: oklch(0.9 0.02 82 / .55); }
+  .filelist .mark { color: var(--ink-faint); }
+  .line.add .mark { color: var(--moss); }
+  .line.mod .mark { color: var(--amber); }
+  .line.add .path { color: var(--ink); }
+  .filelist .desc { color: var(--ink-faint); font-family: var(--sans); font-size: 12.5px; }
+
+  table.data { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.data th, table.data td {
+    text-align: left; padding: 11px 12px 11px 0;
+    border-bottom: 1px solid var(--rule); vertical-align: top;
+  }
+  table.data th {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 400;
+  }
+  table.data td code { font-family: var(--mono); font-size: 12px; }
+  .pill {
+    display: inline-block; font-family: var(--mono); font-size: 10.5px;
+    padding: 1px 8px; border: 1px solid currentColor; border-radius: 999px;
+    letter-spacing: .06em;
+  }
+  .pill.ok { color: var(--moss); }
+  .pill.warn { color: var(--amber); }
+  .pill.todo { color: var(--ink-faint); }
+  .pill.fail { color: var(--vermilion); }
+
+  .callout {
+    border-left: 3px solid var(--vermilion); background: oklch(0.93 0.018 82);
+    padding: 18px 22px; margin-top: 30px; font-size: 14px; max-width: 84ch;
+  }
+  .callout strong { color: var(--vermilion); }
+
+  /* docs links */
+  .docgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; }
+  .doclink {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+    padding: 16px 0; border-bottom: 1px solid var(--rule);
+    transition: padding .35s var(--ease), color .3s var(--ease);
+  }
+  .doclink:hover { padding-left: 10px; color: var(--vermilion); }
+  .doclink .t { font-family: var(--serif); font-size: 1.2rem; }
+  .doclink .d { font-size: 12.5px; color: var(--ink-faint); }
+  .doclink .arrow { font-family: var(--mono); font-size: 13px; color: var(--ink-faint); }
+
+  footer {
+    margin-top: clamp(64px, 9vw, 110px); border-top: 1px solid var(--ink);
+    padding: 26px 0 60px; display: flex; justify-content: space-between;
+    gap: 20px; flex-wrap: wrap;
+    font-family: var(--mono); font-size: 11px; color: var(--ink-faint);
+    letter-spacing: .06em;
+  }
+
+  @container (max-width: 700px) {
+    .hero { grid-template-columns: 1fr; }
+    .hero-side { border-left: 0; border-top: 1px solid var(--rule); padding-left: 0; padding-top: 18px; }
+    .sec-head { grid-template-columns: 1fr; gap: 6px; }
+    .docgrid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    .hero { grid-template-columns: 1fr; }
+    .hero-side { border-left: 0; border-top: 1px solid var(--rule); padding-left: 0; padding-top: 18px; }
+    .sec-head { grid-template-columns: 1fr; gap: 6px; }
+    .docgrid { grid-template-columns: 1fr; }
+    .rail { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    html { scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">跳到正文</a>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="topline">
+      <span>Branch dossier / 分支技术档案</span>
+      <span class="stamp">31.1-next.1 · 2026-11-07</span>
+    </div>
+    <div class="hero">
+      <div>
+        <h1>magisk<em>-Next</em></h1>
+        <p class="hero-sub">站在官方 v31.1 的最新基线上，把工程化能力补齐，不回退架构。</p>
+      </div>
+      <div class="hero-side">
+        <dl>
+          <dt>Upstream</dt><dd>topjohnwu/Magisk</dd>
+          <dt>Baseline</dt><dd>master @ 33bfff7ce7</dd>
+          <dt>Snapshot</dt><dd>440 files / 5.3 MB</dd>
+          <dt>Licence</dt><dd>GPL-3.0-or-later</dd>
+        </dl>
+      </div>
+    </div>
+    <div class="diffbar">
+      <span class="minus">--- a/upstream-master</span>
+      <span class="plus">+++ b/magisk-Next</span>
+      <span class="meta">19 changed paths · 15 added · 6 modified</span>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="rail-wrap">
+      <div class="rail">
+        <div><b class="hl">6/6</b><span>静态一致性</span></div>
+        <div><b>11</b><span>单元测试</span></div>
+        <div><b>4</b><span>工具自测</span></div>
+        <div><b>8</b><span>子模块待引导</span></div>
+        <div><b>0</b><span>预编译产物</span></div>
+      </div>
+    </div>
+
+    <section>
+      <div class="sec-head"><span class="sec-num">01 / 基线定位</span><h2>Kitsune 到底停在哪一代</h2></div>
+      <p class="lede">把参考仓库 <code>QOS3/Magisk</code> 的 master 快照与官方 15 个历史 tag 逐个做文件指纹比对，<strong>v30.7 以 517 个完全相同文件胜出</strong>。而官方当前 master 已经是 v31.1 的大重构版 —— 两边根本不在同一代基线上，直接 diff 出来的 343 个「新增文件」大多是官方后来删掉的旧模块。</p>
+      <div class="chart" id="chart"></div>
+      <p class="chart-note">进一步核对 QOS3/Magisk master 最近 100 条提交：全部是官方 v31 开发期的提交（Compose 重写、Material 3、翻译更新、依赖升级），没有一条 Kitsune 自研提交；全仓检索 <code>Kitsune</code> / <code>HuskyDG</code> 为 0 命中。用户给的这个 master 分支实际是一份官方快照，这一点写进了调研报告，没有按「Kitsune 改了很多」去编。</p>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="sec-num">02 / 交付内容</span><h2>改动地图与验证状态</h2></div>
+      <div class="tabs" role="tablist" aria-label="交付内容">
+        <button role="tab" aria-selected="true" aria-controls="p-files" id="t-files">改动文件</button>
+        <button role="tab" aria-selected="false" aria-controls="p-verify" id="t-verify">验证结果</button>
+        <button role="tab" aria-selected="false" aria-controls="p-road" id="t-road">路线图与限制</button>
+      </div>
+
+      <div class="panel" id="p-files" role="tabpanel" aria-labelledby="t-files">
+        <div class="filelist">
+          <div class="line add"><span class="mark">+</span><span><span class="path">next/*.py</span> <span class="desc">— 5 个无三方依赖的主机工具 + 公共定义</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">tests/test_next_tools.py</span> <span class="desc">— 11 个单元测试</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">scripts/{bootstrap-submodules,next-build,verify-next}.sh</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">.github/workflows/next-ci.yml</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">app/core/.../next/NextFeatures.kt</span> <span class="desc">— 分支标识、8 项体检、JSON 导出</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">app/apk/.../settings/NextSection.kt</span> <span class="desc">— 自包含设置分区</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">README-NEXT.md · docs/{ANALYSIS,DESIGN,BUILDING-NEXT,CHANGELOG-NEXT}.md</span></span></div>
+          <div class="line mod"><span class="mark">~</span><span><span class="path">build.py</span> <span class="desc">— 三处构建期标识注入 + 4 个 next.* 配置映射与校验</span></span></div>
+          <div class="line mod"><span class="mark">~</span><span><span class="path">config.prop.sample</span> <span class="desc">— 4 个可选配置项</span></span></div>
+          <div class="line mod"><span class="mark">~</span><span><span class="path">app/core/.../Config.kt</span> <span class="desc">— 3 个 preference 键与开关</span></span></div>
+          <div class="line mod"><span class="mark">~</span><span><span class="path">app/apk/.../settings/SettingsScreen.kt</span> <span class="desc">— 仅插入 1 行调用</span></span></div>
+          <div class="line mod"><span class="mark">~</span><span><span class="path">values/strings.xml · values-zh-rCN/strings.xml</span> <span class="desc">— 各 7 条中英文案</span></span></div>
+        </div>
+      </div>
+
+      <div class="panel" id="p-verify" role="tabpanel" aria-labelledby="t-verify" hidden>
+        <table class="data">
+          <thead><tr><th>检查</th><th>方式</th><th>结果</th></tr></thead>
+          <tbody>
+            <tr><td>build.py 语法 / CLI</td><td><code>py_compile</code> · <code>build.py -h</code></td><td><span class="pill ok">通过</span></td></tr>
+            <tr><td>构建标识注入</td><td>实跑 <code>dump_flags_app</code> / <code>dump_flags_native</code></td><td><span class="pill ok">已生成 flags.prop / .h / .rs</span></td></tr>
+            <tr><td>仓库一致性</td><td><code>next/verify_repo.py</code> 6 项</td><td><span class="pill ok">6 / 6</span></td></tr>
+            <tr><td>单元测试</td><td><code>unittest discover -s tests</code></td><td><span class="pill ok">11 / 11</span></td></tr>
+            <tr><td>工具自测</td><td>4 × <code>--self-test</code></td><td><span class="pill ok">4 / 4</span></td></tr>
+            <tr><td>shell 语法</td><td><code>bash -n</code> × 3</td><td><span class="pill ok">通过</span></td></tr>
+            <tr><td>资源与引用</td><td>52 个 XML · 7 个 Kotlin 引用</td><td><span class="pill ok">一致</span></td></tr>
+            <tr><td>Android Gradle 编译</td><td>需要 JDK 25 + ONDK</td><td><span class="pill fail">未执行</span></td></tr>
+            <tr><td>完整出包</td><td>需要 Android SDK + 8 个 submodule</td><td><span class="pill fail">未产出</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="panel" id="p-road" role="tabpanel" aria-labelledby="t-road" hidden>
+        <table class="data">
+          <thead><tr><th>优先级</th><th>项目</th><th>状态</th></tr></thead>
+          <tbody>
+            <tr><td>P0</td><td>Android Gradle 编译验证（<code>:apk:assembleDebug</code>）</td><td><span class="pill todo">待环境</span></td></tr>
+            <tr><td>P0</td><td>用 <code>--recurse-submodules</code> 重建基线，锁定 8 个 commit</td><td><span class="pill todo">待环境</span></td></tr>
+            <tr><td>P1</td><td>模块快照执行逻辑（开关与文案已落地）</td><td><span class="pill todo">未实现</span></td></tr>
+            <tr><td>P1</td><td>更新通道清单签名校验（开关与文案已落地）</td><td><span class="pill todo">未实现</span></td></tr>
+            <tr><td>P1</td><td>体检报告 UI 导出入口（数据层已就绪）</td><td><span class="pill todo">未实现</span></td></tr>
+            <tr><td>P2</td><td>可选 App Cloak 插件，带回 v31.1 移除的隐藏能力</td><td><span class="pill todo">设计阶段</span></td></tr>
+            <tr><td>P2</td><td>可复现构建与 SBOM</td><td><span class="pill todo">未开始</span></td></tr>
+          </tbody>
+        </table>
+        <div class="callout"><strong>诚实边界：</strong>本沙箱有 JDK 20 / Gradle 9.3 / Rust 1.93，但没有 Android SDK、ONDK（定制 Rust 工具链 r30.1）和 JDK 25，也没有 submodule 内容。<code>preflight.py</code> 会如实报出这 3 项 FAIL，因此没有伪造一个「能装但不能用」的 APK。手搓 APK 类工具不适用于 Magisk —— root 能力在 native 侧并打进 boot 镜像，签名还与 daemon 信任链绑定。</div>
+      </div>
+    </section>
+
+    <section>
+      <div class="sec-head"><span class="sec-num">03 / 索引</span><h2>文档与上手</h2></div>
+      <div class="docgrid">
+        <a class="doclink" href="ANALYSIS.md"><span><span class="t">调研分析</span><br><span class="d">官方架构、基线定位、三层差异数据</span></span><span class="arrow">→</span></a>
+        <a class="doclink" href="DESIGN.md"><span><span class="t">设计文档</span><br><span class="d">已实现能力、路线图、风险</span></span><span class="arrow">→</span></a>
+        <a class="doclink" href="BUILDING-NEXT.md"><span><span class="t">构建说明</span><br><span class="d">环境要求、submodule、工具链适用性</span></span><span class="arrow">→</span></a>
+        <a class="doclink" href="CHANGELOG-NEXT.md"><span><span class="t">变更日志</span><br><span class="d">逐文件改动与验证记录</span></span><span class="arrow">→</span></a>
+        <a class="doclink" href="../README-NEXT.md"><span><span class="t">README-NEXT</span><br><span class="d">项目主说明与快速开始</span></span><span class="arrow">→</span></a>
+        <a class="doclink" href="../next/preflight.py"><span><span class="t">preflight.py</span><br><span class="d">9 项构建前环境自检</span></span><span class="arrow">→</span></a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <span>magisk-Next · 与 Magisk 官方无关 · 非 Google 官方产品</span>
+    <span>baseline 33bfff7ce7 → next 31.1-next.1</span>
+  </footer>
+</div>
+
+<script>
+  const baseline = [
+    ["v30.7", 0.676, 1], ["v30.6", 0.591, 0], ["v30.5", 0.590, 0],
+    ["v30.4", 0.562, 0], ["v30.3", 0.557, 0], ["v30.2", 0.492, 0],
+    ["v30.1", 0.460, 0], ["v29.0", 0.432, 0], ["v31.0", 0.352, 0],
+    ["v31.1", 0.176, 0], ["v27.0", 0.032, 0]
+  ];
+  const chart = document.getElementById('chart');
+  baseline.forEach(([tag, score, win], i) => {
+    const row = document.createElement('div');
+    row.className = 'row' + (win ? ' win' : '');
+    row.innerHTML = `<span class="tag">${tag}</span>` +
+      `<span class="track"><span class="fill" style="width:0%"></span></span>` +
+      `<span class="val">${score.toFixed(3)}</span>`;
+    chart.appendChild(row);
+    requestAnimationFrame(() => {
+      setTimeout(() => { row.querySelector('.fill').style.width = (score * 100).toFixed(1) + '%'; }, 40 + i * 45);
+    });
+  });
+  const tabs = [...document.querySelectorAll('[role="tab"]')];
+  tabs.forEach(tab => tab.addEventListener('click', () => {
+    tabs.forEach(t => {
+      const on = t === tab;
+      t.setAttribute('aria-selected', String(on));
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+  }));
+  tabs.forEach((tab, i) => tab.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+    next.focus(); next.click();
+  }));
+</script>
+</body>
+</html>

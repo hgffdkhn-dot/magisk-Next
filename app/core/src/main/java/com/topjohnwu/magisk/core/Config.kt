@@ -37,6 +37,11 @@ object Config : PreferenceConfig, DBConfig {
         const val THEME_ORDINAL = "theme_ordinal"
         const val DOH = "doh"
         const val RAND_NAME = "rand_name"
+
+        // magisk-Next
+        const val NEXT_MODULE_SNAPSHOT = "next_module_snapshot"
+        const val NEXT_CHANNEL_VERIFY = "next_channel_verify"
+        const val NEXT_HEALTH_CHECK = "next_health_check"
     }
 
     object OldValue {
@@ -97,6 +102,12 @@ object Config : PreferenceConfig, DBConfig {
     var customChannelUrl by preference(Key.CUSTOM_CHANNEL, "")
     var downloadDir by preference(Key.DOWNLOAD_DIR, "")
     var randName by preference(Key.RAND_NAME, true)
+
+    // magisk-Next: feature switches. Defaults are deliberately conservative.
+    var nextModuleSnapshot by preference(Key.NEXT_MODULE_SNAPSHOT, true)
+    var nextChannelVerify by preference(Key.NEXT_CHANNEL_VERIFY, true)
+    var nextHealthCheck by preference(Key.NEXT_HEALTH_CHECK, true)
+
     var checkUpdate
         get() = checkUpdatePrefs
         set(value) {

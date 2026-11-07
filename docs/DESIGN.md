@@ -66,7 +66,9 @@ next.channelVerify=1
 - `scripts/bootstrap-submodules.sh`：兼容「带 gitlink 的完整 clone」和「归档快照无 gitlink」两种情况，后者按 `.gitmodules` 逐个克隆并支持镜像回退。
 - `scripts/next-build.sh`：自检 → `build.py` → 产物清单，参数可透传。
 - `scripts/verify-next.sh`：静态校验 + 单测 + 自测，一处入口。
-- `.github/workflows/next-ci.yml`：push/PR 跑校验；`workflow_dispatch` 跑完整构建并上传产物。
+- `.github/workflows/next-ci.yml`：push/PR 跑秒级静态校验，不需要 SDK。
+- `.github/workflows/build-next.yml`：`workflow_dispatch` / `v*` tag 跑完整构建。复用上游 `setup` composite action 装 JDK 25 与 ONDK，但**子模块改用 `bootstrap-submodules.sh` 引导**（归档快照无 gitlink，`submodules: recursive` 无效）；产物经 `integrity.py` 校验后上传，tag 触发时用 `gh release create` 自动发 Release。
+- `.github/next-ci.prop`：CI 专用构建配置，带 `next.*` 标识、不含签名占位值。
 
 ## 3. 路线图（未实现，明确列出）
 

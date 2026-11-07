@@ -5,7 +5,11 @@
 #   ./scripts/next-build.sh                      # 等价于 ./build.py all
 #   ./scripts/next-build.sh --skip-preflight
 #   ./scripts/next-build.sh --config config.prop --release
-#   ./scripts/next-build.sh native              # 其余参数原样透传给 build.py
+#   ./scripts/next-build.sh native              # action 及其它参数透传给 build.py
+#
+# 注意：build.py 的 -r/-v/-c 是全局参数，必须位于 action 之前。
+# 本脚本会把 --release/--verbose 自动归到全局参数，并补上默认 action "all"，
+# 避免 "./build.py --release" 这种只打印帮助就退出 1 的调用。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -13,7 +17,8 @@ cd "$ROOT"
 
 SKIP_PREFLIGHT=0
 CONFIG="config.prop"
-BUILD_ARGS=()
+GLOBAL_ARGS=()
+ACTION_ARGS=()
 
 usage() {
     sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
@@ -24,7 +29,9 @@ while (($#)); do
         --skip-preflight) SKIP_PREFLIGHT=1; shift ;;
         --config) CONFIG="${2:?--config 需要参数}"; shift 2 ;;
         -h|--help) usage; exit 0 ;;
-        *) BUILD_ARGS+=("$1"); shift ;;
+        # build.py 的全局 flag 必须排在 action 前面
+        -r|--release|-v|--verbose|-vv) GLOBAL_ARGS+=("$1"); shift ;;
+        *) ACTION_ARGS+=("$1"); shift ;;
     esac
 done
 
@@ -33,13 +40,13 @@ if (( SKIP_PREFLIGHT == 0 )); then
     python3 next/preflight.py
 fi
 
-if (( ${#BUILD_ARGS[@]} == 0 )); then
-    BUILD_ARGS=(all)
+if (( ${#ACTION_ARGS[@]} == 0 )); then
+    ACTION_ARGS=(all)
 fi
 
 echo
-echo ">>> 调用上游构建：./build.py -c $CONFIG ${BUILD_ARGS[*]}"
-./build.py -c "$CONFIG" "${BUILD_ARGS[@]}"
+echo ">>> 调用上游构建：./build.py ${GLOBAL_ARGS[*]:-} -c $CONFIG ${ACTION_ARGS[*]}"
+./build.py "${GLOBAL_ARGS[@]}" -c "$CONFIG" "${ACTION_ARGS[@]}"
 
 OUT="$(python3 - "$CONFIG" <<'PY'
 import sys

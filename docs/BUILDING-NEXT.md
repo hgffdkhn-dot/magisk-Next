@@ -91,7 +91,23 @@ python3 next/health_report.py --demo
 python3 -m unittest discover -s tests -v
 ```
 
-CI 里 `verify` job 只跑 `scripts/verify-next.sh`，不依赖 Android SDK；`build` job 由 `workflow_dispatch` 手动触发，会装 JDK 25 + Android SDK + ONDK 再跑完整构建。
+## 4.1 GitHub Actions 工作流
+
+仓库里有两条分工明确的工作流：
+
+| 工作流 | 触发 | 做什么 | 需要 SDK |
+| --- | --- | --- | --- |
+| `next-ci.yml` | push / PR / 手动 | `scripts/verify-next.sh` 静态校验 + 单测 + 工具自测，外加 `next-build.sh --help` 参数入口冒烟 | 否 |
+| `build-next.yml` | 手动 `workflow_dispatch` / 推送 `v*` tag | 完整构建、产物校验、上传 artifact；tag 触发时额外自动创建 Release | 是 |
+
+`build-next.yml` 的几个关键点：
+
+- **子模块引导**：基线来自归档快照，index 里没有 gitlink，`actions/checkout` 的 `submodules: recursive` 对本仓库无效，因此用 `./scripts/bootstrap-submodules.sh --shallow` 按 `.gitmodules` 逐个克隆（直连失败自动回退镜像）。这是本分支与上游 `build.yml` 最大的差异。
+- **环境**：直接复用上游 composite action `./.github/actions/setup`（`is-asset-build: true`），由它安装 JDK 25、Python、sccache、Gradle 缓存并执行 `build.py ndk` 装 ONDK，与官方 master 保持一致。
+- **配置**：`cp .github/next-ci.prop config.prop`。该文件带 `next.*` 构建标识、只构建 `arm64-v8a` 加速 CI，且**刻意不含签名占位值**——`config.prop.sample` 里的 `keyStore=string` 若被照搬会被当成真实 keystore 导致失败。手动触发时可用 `abi_list` / `build_type` 两个输入覆盖。
+- **产物**：`scripts/next-build.sh` 自动把 `--release` 归到全局参数并补 `all`；构建完成后 `next/integrity.py` 生成并校验 `SHA256SUMS`，`upload-artifact` 上传 `out/` 与符号表。
+
+> GitHub Actions 的 `workflow_dispatch` 只在**默认分支**上注册，所以本仓库把默认分支设为 `next`；`main` 是未改动的官方基线，不含这两条工作流。
 
 ## 5. 当前沙箱为什么没有产出 APK
 

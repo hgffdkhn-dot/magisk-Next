@@ -1,0 +1,15 @@
+# magisk-Next CI 构建配置
+#
+# 由 .github/workflows/build-next.yml 复制为仓库根目录的 config.prop 后使用。
+# 刻意不设置 keyStore/keyStorePass/keyAlias/keyPass —— 未配置签名时上游会使用
+# debug 签名，避免把占位值 "string" 当成真实 keystore 导致构建失败。
+#
+# 发布正式签名包时不要改这个文件，改为在构建机上提供自己的 config.prop。
+
+abiList=arm64-v8a
+outdir=out
+
+next.brand=magisk-Next
+next.moduleSnapshot=1
+next.channelVerify=1
+# next.channel 留空即沿用上游更新通道；如需自定义必须是 https:// 开头的 URL

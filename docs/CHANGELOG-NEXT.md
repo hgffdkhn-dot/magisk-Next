@@ -11,7 +11,9 @@
 - `scripts/bootstrap-submodules.sh`：兼容 gitlink 与归档快照两种来源，支持镜像回退。
 - `scripts/next-build.sh`：自检 → `build.py` → 产物清单。
 - `scripts/verify-next.sh`：静态校验 + 单测 + 工具自测统一入口。
-- `.github/workflows/next-ci.yml`：push/PR 校验，手动触发完整构建。
+- `.github/workflows/next-ci.yml`：push/PR 秒级静态校验。
+- `.github/workflows/build-next.yml`：手动 / `v*` tag 触发的完整构建工作流，复用上游 `setup` composite action，含子模块引导、环境自检、产物校验、上传与自动发 Release。
+- `.github/next-ci.prop`：CI 构建配置，带 `next.*` 标识、不含签名占位值。
 - `app/core/src/main/java/com/topjohnwu/magisk/core/next/NextFeatures.kt`：分支常量、8 项体检检查、JSON 导出。
 - `app/apk/src/main/java/com/topjohnwu/magisk/ui/settings/NextSection.kt`：独立设置分区。
 - `README-NEXT.md`、`docs/ANALYSIS.md`、`docs/DESIGN.md`、`docs/BUILDING-NEXT.md`、`docs/CHANGELOG-NEXT.md`。
@@ -23,6 +25,7 @@
 - `app/core/.../Config.kt`：`Key` 新增 3 个 preference 键，新增 3 个委托属性（默认开启）。
 - `app/apk/.../settings/SettingsScreen.kt`：`SettingsContent` 第二列插入 1 行 `NextSection()` 调用。
 - `app/core/src/main/res/values/strings.xml`、`values-zh-rCN/strings.xml`：各新增 7 条 Next 文案。
+- `scripts/next-build.sh`：**修正参数拼接缺陷**。`build.py` 的 `-r/-v/-c` 是全局参数、必须排在 action 之前；此前 `--release` 被当作 action 透传，既不补默认的 `all`，也会让 `./build.py --release` 只打印帮助并以 1 退出（原 `next-ci.yml` 的完整构建 job 因此跑不通）。现在单独收集全局参数并自动补 `all`。
 
 ### 未改动
 

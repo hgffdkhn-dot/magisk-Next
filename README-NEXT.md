@@ -13,7 +13,7 @@
 | App 功能 | 3 个独立开关（模块快照 / 通道校验 / 运行体检）+ 设备体检 JSON 导出 | `app/core/.../next/NextFeatures.kt`、`app/apk/.../settings/NextSection.kt` |
 | 主机工具 | 环境自检、模块静态校验、产物 SHA256 清单、体检报告渲染、仓库一致性校验 | `next/*.py` |
 | 工程脚本 | submodule 引导、一键构建、一键校验 | `scripts/*.sh` |
-| CI | 提交即校验，手动触发完整构建 | `.github/workflows/next-ci.yml` |
+| CI | push/PR 秒级校验；手动或 `v*` tag 触发完整构建并发布 Release | `.github/workflows/next-ci.yml`、`build-next.yml` |
 
 新增的 App 设置分区是**自包含**的：直接读写 `Config`，不改 `SettingsUiState` / `SettingsViewModel`，在 `SettingsContent` 里只插入一行调用。上游合版时整体保留或整体删掉都很干净。
 

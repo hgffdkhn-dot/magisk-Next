@@ -113,10 +113,10 @@ def self_test() -> int:
     """不依赖真实环境的逻辑自测。"""
     with tempfile.TemporaryDirectory() as td:
         p = Path(td) / "config.prop"
-        p.write_text("# comment\nversion=31.1-next.1\nkeyStore=a\nbad key=x\n",
+        p.write_text("# comment\nversion=31.1-next.3\nkeyStore=a\nbad key=x\n",
                      encoding="utf-8")
         props = parse_props(p)
-        assert props["version"] == "31.1-next.1", props
+        assert props["version"] == "31.1-next.3", props
         assert "bad key" not in props, props
         assert parse_props(Path(td) / "nope") == {}
 

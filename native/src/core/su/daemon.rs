@@ -134,6 +134,12 @@ impl MagiskD {
         }
         if child < 0 {
             error!("su: fork failed, abort");
+            // magisk-Next: upstream returns without replying. su_client_main
+            // then blocks in read_int() waiting for the ack, or reads 0 from the
+            // closing socket and treats the request as GRANTED. Under resource
+            // pressure (EAGAIN/ENOMEM) this is exactly the "partial grant" bug.
+            // Always answer with an explicit denial.
+            client.write_pod(&SuPolicy::Deny.repr).ok();
             return;
         }
 
@@ -141,10 +147,15 @@ impl MagiskD {
         debug!("su: waiting child pid=[{}]", child);
         let mut status = 0;
         let code = unsafe {
-            if libc::waitpid(child, &mut status, 0) > 0 {
-                libc::WEXITSTATUS(status)
-            } else {
-                -1
+            loop {
+                if libc::waitpid(child, &mut status, 0) > 0 {
+                    break libc::WEXITSTATUS(status);
+                }
+                // Retry on EINTR, otherwise the root child is never reaped and
+                // becomes a zombie (a slow fd/process-table leak under load).
+                if std::io::Error::last_os_error().raw_os_error() != Some(libc::EINTR) {
+                    break -1;
+                }
             }
         };
         debug!("su: return code=[{}]", code);

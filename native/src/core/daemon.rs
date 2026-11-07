@@ -20,7 +20,7 @@ use crate::zygisk::ZygiskState;
 use base::const_format::concatcp;
 use base::{
     AtomicArc, BufReadExt, FileAttr, FsPathBuilder, LoggedResult, ReadExt, ResultExt, Utf8CStr,
-    Utf8CStrBuf, WriteExt, cstr, info, libc, log_err,
+    Utf8CStrBuf, WriteExt, cstr, error, info, libc, log_err, warn,
 };
 use nix::fcntl::OFlag;
 use nix::mount::MsFlags;
@@ -35,7 +35,7 @@ use std::process::{Command, exit};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::nonpoison::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 // Global magiskd singleton
 pub static MAGISKD: OnceLock<MagiskD> = OnceLock::new();
@@ -410,11 +410,37 @@ fn daemon_entry() {
     // Loop forever to listen for requests
     let daemon = MagiskD::get();
     for client in sock.incoming() {
-        if let Ok(client) = client.log() {
-            daemon.handle_requests(client);
-        } else {
-            exit(1);
-        }
+        let stream = match client {
+            Ok(s) => s,
+            Err(e) => {
+                // magisk-Next: a single transient accept() failure must NOT kill
+                // magiskd. Upstream called exit(1) here, so EMFILE/ENFILE (fd
+                // pressure), EINTR and ECONNABORTED (client died mid-connect)
+                // terminated the daemon; every later su request then failed
+                // until reboot -- the classic "root randomly dropped" report.
+                match e.raw_os_error() {
+                    Some(libc::EMFILE) | Some(libc::ENFILE) => {
+                        warn!("magiskd: accept fd pressure, backing off: {e}");
+                        // Do not spin at 100% CPU while the fd table is full.
+                        std::thread::sleep(Duration::from_millis(50));
+                    }
+                    Some(libc::EINTR) | Some(libc::ECONNABORTED) | Some(libc::EAGAIN) => {
+                        // Purely transient: just accept again.
+                    }
+                    Some(libc::EBADF) | Some(libc::EINVAL) => {
+                        // The listening socket itself is broken, no recovery.
+                        error!("magiskd: fatal accept error, terminating: {e}");
+                        exit(1);
+                    }
+                    _ => {
+                        warn!("magiskd: accept error (continuing): {e}");
+                        std::thread::sleep(Duration::from_millis(10));
+                    }
+                }
+                continue;
+            }
+        };
+        daemon.handle_requests(stream);
     }
 }
 
@@ -462,13 +488,20 @@ pub fn connect_daemon(code: RequestCode, create: bool) -> LoggedResult<UnixStrea
                 exit(0);
             }
 
-            // In the client, we keep retry and connect to the socket
+            // In the client, we keep retry and connect to the socket.
+            // magisk-Next: bound the wait. Upstream loops forever at 100ms, so
+            // a daemon that fails to come up (init race / fork failure) hangs
+            // `su` and every other client indefinitely -- another common
+            // "root lost" symptom. Give up with a clear error after 5 seconds.
+            let deadline = Instant::now() + Duration::from_secs(5);
             loop {
                 if let Ok(socket) = UnixStream::connect(&sock_path) {
                     return send_request(code, socket);
-                } else {
-                    std::thread::sleep(Duration::from_millis(100));
                 }
+                if Instant::now() >= deadline {
+                    return log_err!("Cannot connect to daemon: startup timed out");
+                }
+                std::thread::sleep(Duration::from_millis(100));
             }
         }
     }

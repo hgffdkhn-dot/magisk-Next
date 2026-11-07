@@ -220,8 +220,19 @@ static void process_events_buffer(struct log_msg *msg) {
                     close(fd);
                     fd = -1;
                 }
+                // magisk-Next: bound the polling loop. Upstream spins every
+                // 10ms with no cap while waiting for the target to reach its
+                // isolated namespace; if that never happens (frozen/slow app),
+                // a forked helper keeps waking forever -> wasted CPU + a leaked
+                // process per denied launch. Give up after ~3s instead.
+                constexpr int MAX_NS_POLLS = 300; // 300 * 10ms = 3s
+                int ns_polls = 0;
                 while (read_ns(pid, &st) == 0 && it->second.st_ino == st.st_ino) {
                     if (stat(path, &st) == 0 && st.st_uid == 0) {
+                        if (++ns_polls > MAX_NS_POLLS) {
+                            LOGW("logcat: denylist namespace wait timeout PID=[%d]\n", pid);
+                            _exit(0);
+                        }
                         usleep(10 * 1000);
                     } else {
                         LOGW("logcat: skip [%.*s] PID=[%s] UID=[%d]; namespace not isolated\n",

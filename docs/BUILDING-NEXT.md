@@ -80,7 +80,8 @@ scripts/env.py ./gradlew :apk:assembleDebug   # 单独跑 Gradle 时的环境包
 ## 4. 校验与工具
 
 ```bash
-bash scripts/verify-next.sh                 # 静态校验 + 单测 + 工具自测（不需要 Android SDK）
+bash scripts/verify-next.sh                 # 10 项静态校验 + 25 单测 + 9 个工具自测
+                                            # + Rust edition 2024 语法解析 + CLI 冒烟（不需要 Android SDK）
 python3 next/verify_repo.py --json          # 机器可读的一致性报告
 python3 next/preflight.py --strict          # 有 WARN 也返回非零
 python3 next/module_lint.py <模块目录>       # 模块发布前检查
@@ -89,6 +90,8 @@ python3 next/integrity.py verify --dir out
 python3 next/health_report.py --input next-health.json --output report.md
 python3 next/health_report.py --demo
 python3 next/api_audit.py                       # Kotlin 上游 API 引用守卫
+python3 next/native_audit.py                    # 12 条 native 修复防回滚守卫
+python3 next/native_audit.py --self-test        # 逐条扰动验证守卫确实有效
 python3 next/snapshot.py capture --modules-dir /path/to/modules --name before
 python3 next/snapshot.py list
 python3 next/snapshot.py diff <id> --modules-dir /path/to/modules
@@ -110,7 +113,7 @@ python3 -m unittest discover -s tests -v
 
 | 工作流 | 触发 | 做什么 | 需要 SDK |
 | --- | --- | --- | --- |
-| `next-ci.yml` | push / PR / 手动 | `scripts/verify-next.sh` 静态校验 + 单测 + 工具自测，外加 `next-build.sh --help` 参数入口冒烟 | 否 |
+| `next-ci.yml` | push / PR / 手动 | `scripts/verify-next.sh` 10 项静态校验（含 native 守卫）+ 单测 + 9 个工具自测 + Rust 语法解析，外加 `next-build.sh --help` 参数入口冒烟 | 否 |
 | `build-next.yml` | 手动 `workflow_dispatch` / 推送 `v*` tag | 完整构建、产物校验、上传 artifact；tag 触发时额外自动创建 Release | 是 |
 
 `build-next.yml` 的几个关键点：

@@ -1,4 +1,4 @@
-use crate::consts::{MODULEMNT, MODULEROOT, PREINITDEV, PREINITMIRR, WORKERDIR};
+use crate::consts::{INTERNAL_DIR, MODULEMNT, MODULEROOT, PREINITDEV, PREINITMIRR, WORKERDIR};
 use crate::ffi::{get_magisk_tmp, resolve_preinit_dir, switch_mnt_ns};
 use crate::resetprop::get_prop;
 use base::{
@@ -235,9 +235,24 @@ pub fn revert_unmount(pid: i32) {
 
     let mut targets = Vec::new();
 
-    // Unmount Magisk tmpfs and mounts from module files
+    // Unmount Magisk tmpfs and mounts from module files.
+    // magisk-Next: upstream only matched source=="magisk" or roots under
+    // /adb/modules. Modules that bind-mount to system paths from other roots
+    // (e.g. worker/preinit tmpfs, or a root that is not module-prefixed) left
+    // visible mount entries behind after hiding. Also sweep anything whose
+    // target or source lives under our private tmpfs subtree (<tmp>/.magisk/).
+    // Match a full path prefix (not a bare ".magisk" substring) so unrelated
+    // system mounts are never unmounted by mistake.
+    let tmp = get_magisk_tmp();
+    let private_dir = format!("{}/{}", tmp.as_str(), INTERNAL_DIR);
+    let private_prefix = format!("{}/", private_dir);
     for info in parse_mount_info("self") {
-        if info.source == "magisk" || info.root.starts_with("/adb/modules") {
+        if info.source == "magisk"
+            || info.root.starts_with("/adb/modules")
+            || info.target == private_dir
+            || info.target.starts_with(private_prefix.as_str())
+            || info.source.starts_with(private_prefix.as_str())
+        {
             targets.push(info.target);
         }
     }

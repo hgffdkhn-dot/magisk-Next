@@ -9,7 +9,7 @@
     {
       "brand": "magisk-Next",
       "channel": "https://example.com/next.json",
-      "version": "31.1-next.2",
+      "version": "31.1-next.3",
       "versionCode": 1000001,
       "generated_at": "2026-11-07T08:30:00Z",
       "artifacts": [
@@ -189,7 +189,7 @@ def template() -> dict:
     return {
         "brand": BRAND,
         "channel": "https://example.com/magisk-next.json",
-        "version": "31.1-next.2",
+        "version": "31.1-next.3",
         "versionCode": 1000001,
         "generated_at": "2026-11-07T08:30:00Z",
         "artifacts": [

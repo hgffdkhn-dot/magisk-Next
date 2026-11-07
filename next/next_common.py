@@ -13,7 +13,7 @@ from typing import Any, Dict
 BRAND = "magisk-Next"
 UPSTREAM_REPO = "topjohnwu/Magisk"
 UPSTREAM_BASELINE = "33bfff7ce7"
-NEXT_VERSION = "31.1-next.1"
+NEXT_VERSION = "31.1-next.3"
 
 SUBMODULES = (
     "native/src/external/selinux",

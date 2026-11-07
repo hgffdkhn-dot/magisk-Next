@@ -77,13 +77,19 @@ impl ZygiskState {
         };
 
         if let Some(fd) = socket {
-            // Make sure the socket is still valid
+            // Make sure the socket is still valid.
+            // magisk-Next: upstream treated ANY non-zero poll() return as a dead
+            // socket. poll() returns -1 on EINTR (a signal), which is not a
+            // socket error; treating it as fatal needlessly killed and re-forked
+            // zygiskd on every stray signal. With events=0/timeout=0, only a
+            // positive return carrying error revents means magiskd went away.
             let mut pfd = libc::pollfd {
                 fd: fd.as_raw_fd(),
                 events: 0,
                 revents: 0,
             };
-            if unsafe { libc::poll(&mut pfd, 1, 0) } != 0 || pfd.revents != 0 {
+            let rc = unsafe { libc::poll(&mut pfd, 1, 0) };
+            if rc > 0 && pfd.revents != 0 {
                 // Any revent means error
                 *socket = None;
             }

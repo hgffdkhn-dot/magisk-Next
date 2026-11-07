@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-echo ">>> 静态一致性校验（9 项）"
+echo ">>> 静态一致性校验（10 项）"
 python3 next/verify_repo.py
 
 echo
@@ -14,9 +14,35 @@ python3 -m unittest discover -s tests -v
 
 echo
 echo ">>> 工具自测"
-for tool in preflight module_lint integrity health_report snapshot channel api_audit verify_repo; do
+for tool in preflight module_lint integrity health_report snapshot channel api_audit native_audit verify_repo; do
     python3 "next/${tool}.py" --self-test
 done
+
+echo
+echo ">>> Rust 语法解析（edition 2024，rustfmt 可用时）"
+RUST_FILES=(
+    native/src/core/daemon.rs
+    native/src/core/mount.rs
+    native/src/core/su/daemon.rs
+    native/src/core/thread.rs
+    native/src/core/zygisk/daemon.rs
+)
+PROBE="$(mktemp /tmp/magisk-next-probe.XXXXXX.rs)"
+printf 'fn main() {}\n' > "$PROBE"
+if command -v rustfmt >/dev/null 2>&1 && \
+   rustfmt --edition 2024 --emit stdout "$PROBE" >/dev/null 2>&1; then
+    for f in "${RUST_FILES[@]}"; do
+        if ! rustfmt --edition 2024 --emit stdout "$f" >/dev/null 2>&1; then
+            echo "Rust 语法解析失败: $f" >&2
+            rm -f "$PROBE"
+            exit 1
+        fi
+    done
+    echo "OK: ${#RUST_FILES[@]} 个改动的 Rust 文件可解析"
+else
+    echo "SKIP: rustfmt 不支持 edition 2024（完整编译由 build-next.yml 验证）"
+fi
+rm -f "$PROBE"
 
 echo
 echo ">>> 新能力 CLI 冒烟"

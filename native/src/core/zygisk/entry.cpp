@@ -2,6 +2,7 @@
 #include <android/dlext.h>
 #include <dlfcn.h>
 #include <poll.h>
+#include <cerrno>
 
 #include <base.hpp>
 #include <core.hpp>
@@ -39,6 +40,12 @@ static void zygiskd(int socket) {
                 };
                 if (void *h = android_dlopen_ext("/jit-cache", RTLD_LAZY, &info)) {
                     *(void **) &entry = dlsym(h, "zygisk_companion_entry");
+                    if (entry == nullptr) {
+                        // magisk-Next: a module without a companion entry still
+                        // holds a dlopen handle. Release it instead of leaking one
+                        // handle per module for the whole life of zygiskd.
+                        dlclose(h);
+                    }
                 } else {
                     LOGW("Failed to dlopen zygisk module: %s\n", dlerror());
                 }
@@ -52,12 +59,27 @@ static void zygiskd(int socket) {
     write_int(socket, 0);
 
     // Start accepting requests
-    pollfd pfd = { socket, POLLIN, 0 };
     for (;;) {
-        poll(&pfd, 1, -1);
-        if (pfd.revents && !(pfd.revents & POLLIN)) {
+        // magisk-Next: upstream ignored poll()'s return value and never reset
+        // revents. On EINTR (a signal) poll returns -1 with revents untouched,
+        // so a stale POLLIN from a previous iteration could make zygiskd call
+        // recv_fd() on a socket with nothing pending, or miss a real hangup.
+        // Rebuild the pollfd every iteration and handle the return code.
+        pollfd pfd = { socket, POLLIN, 0 };
+        int rc;
+        do {
+            rc = poll(&pfd, 1, -1);
+        } while (rc < 0 && errno == EINTR);
+        if (rc < 0) {
             // Something bad happened in magiskd, terminate zygiskd
             exit(0);
+        }
+        if (pfd.revents & (POLLERR | POLLHUP | POLLNVAL)) {
+            // magiskd went away, terminate zygiskd
+            exit(0);
+        }
+        if (!(pfd.revents & POLLIN)) {
+            continue;
         }
         int client = recv_fd(socket);
         if (client < 0) {
@@ -65,9 +87,12 @@ static void zygiskd(int socket) {
             exit(0);
         }
         int module_id = read_int(client);
-        if (module_id >= 0 && module_id < modules.size() && modules[module_id]) {
+        if (module_id >= 0 && static_cast<size_t>(module_id) < modules.size() &&
+            modules[module_id]) {
             exec_companion_entry(client, modules[module_id]);
         } else {
+            // magisk-Next: always close the accepted fd on the invalid path.
+            // The companion handler owns it on the valid path (see mod.rs).
             close(client);
         }
     }

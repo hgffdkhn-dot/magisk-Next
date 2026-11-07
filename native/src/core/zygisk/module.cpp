@@ -360,6 +360,13 @@ void ZygiskContext::run_modules_pre(rust::Vec<int> &fds) {
         if (void *h = android_dlopen_ext("/jit-cache", RTLD_LAZY, &info)) {
             if (void *e = dlsym(h, "zygisk_module_entry")) {
                 modules.emplace_back(i, h, e);
+            } else {
+                // magisk-Next: dlopen succeeded but the module has no entry
+                // symbol. Release the handle and mark it failed so system_server
+                // still creates the unloaded marker; upstream leaked the handle
+                // and left fds[i] valid, so the broken module was never reported.
+                dlclose(h);
+                fds[i] = -1;
             }
         } else if (flags & SERVER_FORK_AND_SPECIALIZE) {
             ZLOGW("Failed to dlopen zygisk module: %s\n", dlerror());

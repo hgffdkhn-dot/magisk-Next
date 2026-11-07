@@ -1,5 +1,56 @@
 # magisk-Next 变更日志
 
+## 31.1-next.3 — Native 核心增强：Zygisk / 隐藏 / 线程 / 遗留缺陷
+
+> 方向调整：上一轮的主机侧工具与文档被明确评价为「加了跟没加似的」。本轮**直接修改
+> `native/src` 核心**，并用推送后的 CI 完整构建做真实编译验证。完整审查见
+> [NATIVE-AUDIT.md](NATIVE-AUDIT.md)。
+
+### Native 改动（10 个文件，+173 −44）
+
+| 分类 | 文件 | 改动 |
+| --- | --- | --- |
+| Zygisk | `core/zygisk/entry.cpp` | companion `dlsym` 失败时 `dlclose`；`poll` 每次重建 `pollfd`、处理 EINTR / `POLLERR\|POLLHUP\|POLLNVAL`；非法 `module_id` 显式 `close(client)` |
+| Zygisk | `core/zygisk/daemon.rs` | `poll()` 返回 `-1`（EINTR）不再误判 socket 死亡、不再无谓重 fork zygiskd |
+| Zygisk | `core/zygisk/module.cpp` | 模块缺 `zygisk_module_entry` 时 `dlclose` 并置 `fds[i] = -1` |
+| 隐藏 | `core/mount.rs` | `revert_unmount()` 额外清理私有 tmpfs `<tmp>/.magisk/` 下的 target/source，使用完整路径前缀避免误卸载 |
+| 线程 | `core/thread.rs` | 单 `Option<task>` 槽改 `VecDeque` FIFO 队列、提交者不再等待、双 Condvar 合一、新增 `MAX_POOL_SIZE = 16` |
+| 线程 | `core/utils.cpp` | `pthread_create()` 返回值不再写进 `errno`，补 `pthread_attr_destroy()` |
+| 掉 root | `core/daemon.rs` | accept 错误按 `EMFILE/ENFILE/EINTR/ECONNABORTED/EAGAIN/EBADF/EINVAL` 分类，不再一律 `exit(1)`；`connect_daemon()` 加 5 秒 deadline |
+| 掉 root | `core/deny/utils.cpp` | 守卫 `pkg_to_procs.find(pkg)->second` 的 `end()` 解引用 |
+| 授权 / 泄露 | `core/su/daemon.rs` | fork 失败显式回 `SuPolicy::Deny`；`waitpid()` 处理 EINTR 避免僵尸进程 |
+| 高占用 | `core/deny/logcat.cpp` | namespace 等待加 `MAX_NS_POLLS = 300`（约 3 秒）上限，消除无限 10ms 忙等与 helper 残留 |
+
+### 新增静态守卫与校验
+
+- `next/native_audit.py`：把 12 组修复固化成 **12 条规则 / 60 项断言**，含逐条扰动自测
+  （删除必需片段 / 注入反模式，验证守卫确实能抓到回滚），防止 rebase 或合并上游时静静丢失修复。
+- `next/verify_repo.py`：9 项 → **10 项**（新增 `native guards`）。
+- `scripts/verify-next.sh`：工具自测 8 → 9 个；新增 **Rust edition 2024 语法解析段**
+  （先探测 rustfmt 支持度，不支持则 SKIP，不阻断 CI）。
+- `tests/test_next_tools.py`：21 → **25 个单测**（新增 `TestNativeAudit` 4 项）。
+- 版本号统一推进到 `31.1-next.3`，修复此前 `next_common.py` / `__init__.py` / `NextFeatures.kt`
+  停留在 `next.1`、文档写 `next.2` 的漂移。
+
+### 验证记录（本地实测）
+
+| 检查 | 结果 |
+| --- | --- |
+| `rustfmt --edition 2024 --emit stdout`（5 个改动 `.rs`） | 全部可解析 |
+| `python3 next/native_audit.py` / `--self-test` | 12/12 规则、60 项断言、扰动自测通过 |
+| `python3 next/verify_repo.py` | **10/10 通过** |
+| `python3 -m unittest discover -s tests -v` | **25/25 通过** |
+| `bash scripts/verify-next.sh` | **ALL CHECKS PASSED** |
+| GitHub Actions `build-next.yml` 完整构建 | 推送后验证（见本节末尾更新） |
+
+### 诚实标注
+
+- **不动 MagiskSU 权限模型与 daemon 签名信任链**；不含针对具体应用检测的绕过代码、
+  特征串或黑名单。隐藏增强只扩大 Magisk **自身挂载** 的清理范围。
+- 本地无 Android SDK / ONDK / submodule 内容，native 真编译必须依赖 CI；
+  rustfmt 解析与静态守卫**不等于运行时正确**，真机 / AVD 冒烟仍未实现（P0）。
+- 本轮修复是对既有路径的健壮性与资源生命周期修复，不引入新的 root 能力或对外接口。
+
 ## 31.1-next.2 — 功能增强与缺陷修复
 
 > 事实基线：上一轮的完整构建工作流已在 GitHub Actions 实跑 **success**

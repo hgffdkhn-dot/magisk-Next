@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """仓库一致性静态校验（magisk-Next）。
 
-不依赖 Android SDK，可在 CI 中直接运行。检查 9 项：
+不依赖 Android SDK，可在 CI 中直接运行。检查 10 项：
   1. 所有 Python 源码语法
   2. 资源 XML 合法性 + Next 文案中英文齐全
   3. Kotlin 里 CoreR.string.next_* 引用均有定义
@@ -11,6 +11,7 @@
   7. 每个 next/*.py 工具都带 --self-test
   8. 新增 shell 脚本语法
   9. .gitmodules 与工具箱 SUBMODULES 常量一致
+ 10. native 核心增强静态守卫（12 条规则，防止 rebase 回滚修复）
 
 用法：python3 next/verify_repo.py [--json] [--self-test]
 """
@@ -29,6 +30,7 @@ from next_common import (  # noqa: E402
     FAIL, PASS, SUBMODULES, WARN, exit_code, project_root, render_checks,
 )
 import api_audit  # noqa: E402
+import native_audit  # noqa: E402
 
 NEXT_STRINGS = (
     "next_section_title", "next_snapshot_title", "next_snapshot_summary",
@@ -187,12 +189,22 @@ def check_submodules(root: Path) -> dict:
                    "同步 .gitmodules 与 next/next_common.py")
 
 
+def check_native_audit(root: Path) -> dict:
+    """native 修复不能被 rebase / 合并上游悄悄回滚。"""
+    problems = native_audit.audit(root)
+    s = native_audit.summary(root)
+    return _result("native guards", not problems,
+                   f"{s['rules']} 条规则 / {s['assertions']} 项断言通过",
+                   "; ".join(f"{p['code']}: {p['message']}" for p in problems[:6]),
+                   "运行 python3 next/native_audit.py 查看详情")
+
+
 def run_all(root: Path) -> list:
     return [check_python(root), check_resources(root),
             check_kotlin_refs(root), check_kotlin_api(root),
             check_build_props(root), check_next_buildconfig(root),
             check_tool_selftests(root), check_shell(root),
-            check_submodules(root)]
+            check_submodules(root), check_native_audit(root)]
 
 
 def self_test() -> int:

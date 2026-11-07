@@ -137,11 +137,18 @@ int new_daemon_thread(thread_entry entry, void *arg) {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    errno = pthread_create(&thread, &attr, entry, arg);
-    if (errno) {
+    // magisk-Next: pthread_create returns an error number, it does NOT set errno.
+    // Upstream stored the result in errno (clobbering the real errno) and left
+    // the attribute object without a matching destroy. Keep the result in a
+    // local, and pair init/destroy as POSIX requires (no long-lived attr leaked
+    // into each freshly spawned daemon thread).
+    int rc = pthread_create(&thread, &attr, entry, arg);
+    pthread_attr_destroy(&attr);
+    if (rc) {
+        errno = rc;
         PLOGE("pthread_create");
     }
-    return errno;
+    return rc;
 }
 
 static char *argv0;

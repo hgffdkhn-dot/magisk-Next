@@ -21,6 +21,7 @@ import channel  # noqa: E402
 import health_report  # noqa: E402
 import integrity  # noqa: E402
 import module_lint  # noqa: E402
+import native_audit  # noqa: E402
 import next_common as common  # noqa: E402
 import preflight  # noqa: E402
 import snapshot  # noqa: E402
@@ -223,6 +224,43 @@ class TestApiAudit(unittest.TestCase):
         refs = api_audit.extract_refs("val a = Config.noSuchField\n")
         self.assertIn("noSuchField", refs["Config"])
         self.assertNotIn("noSuchField", api_audit.definitions(ROOT)["Config"])
+
+
+class TestNativeAudit(unittest.TestCase):
+    def test_real_repo_passes(self):
+        self.assertFalse(native_audit.audit(ROOT))
+
+    def test_checks_shape(self):
+        cs = native_audit.checks(ROOT)
+        self.assertEqual(len(cs), 12)
+        self.assertTrue(all(c["status"] == common.PASS for c in cs))
+        s = native_audit.summary(ROOT)
+        self.assertEqual(s["rules"], 12)
+        self.assertGreaterEqual(s["assertions"], 50)
+        self.assertEqual(s["failed_rules"], 0)
+
+    def test_removed_snippet_is_caught(self):
+        rule = next(r for r in native_audit.RULES if r["id"] == "N01")
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            dst = root / rule["file"]
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_text((ROOT / rule["file"]).read_text(encoding="utf-8")
+                           .replace("const MAX_POOL_SIZE: i32 = 16;", ""),
+                           encoding="utf-8")
+            # 其它规则的文件缺失也会报错，但 N01 必须因断言失败被点名
+            self.assertIn("N01", {i["code"] for i in native_audit.audit(root)})
+
+    def test_forbidden_antipattern_is_caught(self):
+        rule = next(r for r in native_audit.RULES if r["id"] == "N02")
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            dst = root / rule["file"]
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.write_text((ROOT / rule["file"]).read_text(encoding="utf-8")
+                           + "\nerrno = pthread_create(&thread, &attr, entry, arg);\n",
+                           encoding="utf-8")
+            self.assertIn("N02", {i["code"] for i in native_audit.audit(root)})
 
 
 class TestRepoLayout(unittest.TestCase):

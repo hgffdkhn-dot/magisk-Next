@@ -89,9 +89,9 @@ def demo_data() -> dict:
         "generated_at": "2026-11-07T08:30:00Z",
         "checks": [
             {"id": "magisk.active", "status": "ok",
-             "detail": "Magisk 已激活，核心版本 31.1-next.1", "hint": ""},
+             "detail": "Magisk 已激活，核心版本 31.1-next.3", "hint": ""},
             {"id": "app.version", "status": "ok",
-             "detail": "31.1-next.1 (1000000)", "hint": ""},
+             "detail": "31.1-next.3 (1000000)", "hint": ""},
             {"id": "zygisk.enabled", "status": "ok",
              "detail": "Zygisk 已启用", "hint": ""},
             {"id": "zygisk.loaded", "status": "ok",

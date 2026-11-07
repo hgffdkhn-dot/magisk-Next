@@ -3,28 +3,38 @@
 > 本文回答两个问题：**magisk-Next 现在到底有哪些能力**、**还能加什么**。
 > 所有「已实现」项都能用 `bash scripts/verify-next.sh` 复验；所有「未实现」项明确标注，
 > 不把「开关已落地」当作「功能已完成」。
+> native 核心的完整审查（12 组缺陷的根因与边界）见 [NATIVE-AUDIT.md](NATIVE-AUDIT.md)。
 
-## 1. 能力矩阵（31.1-next.2）
+## 1. 能力矩阵（31.1-next.3）
 
 | 能力 | 所在层 | 状态 | 复验方式 |
 | --- | --- | --- | --- |
 | 分支标识 `NEXT_BRAND` / `NEXT_CHANNEL` | 构建期 C / Rust / Gradle | 已实现 | `build.py` 的 `dump_flags_*` 实跑 |
-| `next.*` 配置 → `flags.prop` → `BuildConfig` → App | 全链路 | **本轮打通** | `verify_repo.py` 第 6 项 |
+| `next.*` 配置 → `flags.prop` → `BuildConfig` → App | 全链路 | 已实现 | `verify_repo.py` 第 6 项 |
 | 3 个设置开关 + 独立 Compose 分区 | App UI | 已实现 | `api_audit.py`（27 个上游引用） |
-| 8 项设备体检 + JSON 导出 + 分享入口 | App / UI | **本轮补齐导出入口** | `health_report.py --demo` |
-| 模块快照：capture / list / show / diff / verify / restore / prune | 主机工具 | **本轮新增** | `snapshot.py --self-test` |
-| 更新通道清单：格式校验 / 产物 SHA256 / RSA 签名与验签 | 主机工具 | **本轮新增** | `channel.py --self-test`（实测 openssl） |
-| 模块静态校验（含符号链接逃逸、可执行位） | 主机工具 | 本轮增强 | `module_lint.py --self-test` |
-| 产物 SHA256 清单（不跟随符号链接） | 主机工具 | 本轮增强 | `integrity.py --self-test` |
-| Kotlin 上游 API 引用守卫 | 静态校验 | **本轮新增** | `api_audit.py` |
-| 仓库一致性 9 项校验 | 静态校验 | 本轮由 6 项扩到 9 项 | `verify_repo.py` |
-| 完整构建 + 产物上传 + tag 自动发 Release | CI | 已实现并**实跑 success** | Actions run #2（39.6 MB 产物） |
+| 8 项设备体检 + JSON 导出 + 分享入口 | App / UI | 已实现 | `health_report.py --demo` |
+| 模块快照：capture / list / show / diff / verify / restore / prune | 主机工具 | 已实现 | `snapshot.py --self-test` |
+| 更新通道清单：格式校验 / 产物 SHA256 / RSA 签名与验签 | 主机工具 | 已实现 | `channel.py --self-test`（实测 openssl） |
+| 模块静态校验（含符号链接逃逸、可执行位） | 主机工具 | 已实现 | `module_lint.py --self-test` |
+| 产物 SHA256 清单（不跟随符号链接） | 主机工具 | 已实现 | `integrity.py --self-test` |
+| Kotlin 上游 API 引用守卫 | 静态校验 | 已实现 | `api_audit.py` |
+| **Zygisk / 隐藏 / 线程 / 掉 root / 泄露修复（12 组）** | **`native/src/core`** | **本轮新增** | `native_audit.py` + CI 完整构建 |
+| **native 修复防回滚守卫（12 规则 / 60 断言）** | 静态校验 | **本轮新增** | `native_audit.py --self-test` |
+| 仓库一致性 10 项校验 | 静态校验 | 由 6 项扩到 10 项 | `verify_repo.py` |
+| 完整构建 + 产物上传 + tag 自动发 Release | CI | 已实现并实跑 success | Actions run #2（39.6 MB 产物） |
 
 **层级边界要说清楚**：模块快照与通道验签目前是**主机侧工具**（面向模块开发者与分发方），
 设备上的自动快照 / 自动验签**尚未实现**——App 里的两个开关当前只影响体检报告的状态项
 与构建期默认值。这是下面 P0/P1 的首要缺口，不掩饰。
 
-## 2. 本轮修掉的缺陷
+**native 改动的边界同样要说清楚**：本轮修改了 magiskd / MagiskSU / Zygisk / DenyList 的
+健壮性与资源生命周期，但**没有改变 MagiskSU 权限模型、没有加入针对具体应用检测的绕过代码、
+没有引入新的 root 能力或对外接口**。完整构建只证明「能编译」，尚未做真机 / AVD 冒烟。
+
+## 2. 上一轮修掉的缺陷（D1–D10）
+
+> 本轮（next.3）的 12 组 native 缺陷、症状与根因见
+> [NATIVE-AUDIT.md](NATIVE-AUDIT.md) 第 2–6 节。
 
 | 编号 | 缺陷 | 后果 | 修复 |
 | --- | --- | --- | --- |
@@ -38,6 +48,20 @@
 | D9 | 静态校验只查资源名，不查 `Info` / `Config` / `BuildConfig` 符号 | 上游重命名导致编译失败才发现 | 新增 `api_audit.py`，接入 `verify_repo.py` |
 
 ## 3. 后续可增加的新功能（按优先级）
+
+### Native 方向（本轮新增，详见 [NATIVE-AUDIT.md](NATIVE-AUDIT.md) 第 9 节）
+
+| 优先级 | 功能 | 说明 |
+| --- | --- | --- |
+| P0 | 真机 / AVD 冒烟脚本 | 用 `su -c` + DenyList + Zygisk 模块组合验证「掉 root」是否还会复现 |
+| P0 | daemon 健康指标 | 统计 accept 错误分类次数、线程池队列长度、峰值线程数，暴露给体检报告 |
+| P1 | Zygisk 模块 watchdog | companion 超时 / 崩溃后按 backoff 重启，避免单个坏模块拖死 zygiskd |
+| P1 | fd 泄露计数器 | 在 zygiskd / su 路径上记录 fd 分配与释放，超阈值告警 |
+| P1 | su 请求超时 | 给授权等待（用户点按）加可配置上限，避免 UI 卡死时请求永久占用 |
+| P1 | DenyList 规则热更新 | 不走全量 `scan_deny_apps()` 重建，收敛两侧不同步窗口（D-A3 的进一步收敛） |
+| P2 | zygiskd crash backoff | 连续崩溃时指数退避，避免 fork 风暴 |
+| P2 | 模块兼容性矩阵 | 主机侧声明模块要求的 Zygisk API 版本，装前拦截 |
+| P2 | boot A/B 槽位回滚辅助 | 与主机侧 `snapshot.py` 联动 |
 
 ### P0 — 上线前必须补
 
@@ -85,12 +109,14 @@
 - 不针对任何具体应用的检测逻辑做绕过（不含特征串、黑名单、规避代码）。
 - 不提供预编译二进制、签名密钥或现成刷机包。
 - 不改变 MagiskSU 的权限模型与 daemon 签名信任链。
-- 不把未验证的 Kotlin 改动宣称「已通过 Android Gradle 编译」。
+- 不把未经真机 / AVD 验证的改动宣称「运行时正确」。
 
 ## 5. 验证入口
 
 ```bash
-bash scripts/verify-next.sh          # 9 项静态校验 + 单测 + 8 个工具自测 + CLI 冒烟
+bash scripts/verify-next.sh          # 10 项静态校验 + 25 单测 + 9 个工具自测
+                                     # + Rust edition 2024 语法解析 + CLI 冒烟
+python3 next/native_audit.py         # 12 条 native 修复守卫规则
 python3 next/api_audit.py            # Kotlin 上游 API 引用守卫
 python3 next/snapshot.py --self-test # 快照/回滚/篡改拒绝
 python3 next/channel.py --self-test  # 结构与 RSA 验签（依赖 openssl）

@@ -396,7 +396,13 @@ bool is_deny_target(int uid, string_view process) {
         if (it == app_id_to_pkgs.end())
             return false;
         for (const auto &pkg : it->second) {
-            if (pkg_to_procs.find(pkg)->second.count(process))
+            // magisk-Next: app_id_to_pkgs stores string_view keys that point into
+            // pkg_to_procs. If the two ever get out of sync (e.g. scan_deny_apps
+            // rebuilt one side), find() returns end() and upstream dereferenced
+            // it unconditionally -> UB / magiskd crash -> instant root loss on
+            // every zygote specialization. Guard it.
+            auto hit = pkg_to_procs.find(pkg);
+            if (hit != pkg_to_procs.end() && hit->second.count(process))
                 return true;
         }
     }

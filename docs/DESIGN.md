@@ -72,7 +72,8 @@ next.channelVerify=1
 
 ## 3. 路线图（未实现，明确列出）
 
-**完整路线图（12 项后续可增加的新功能、优先级、落点与风险）见 [ROADMAP.md](ROADMAP.md)。**
+**完整路线图（21 项后续可增加的新功能、优先级、落点与风险）见 [ROADMAP.md](ROADMAP.md)；
+本轮 native 核心的 12 组缺陷、症状与边界见 [NATIVE-AUDIT.md](NATIVE-AUDIT.md)。**
 下表只保留状态摘要。
 
 | 优先级 | 项目 | 当前状态 |
@@ -80,6 +81,8 @@ next.channelVerify=1
 | P0 | Android Gradle 编译验证 | **已由 CI 覆盖**：`build-next.yml` 实跑 success 并产出 39.6 MB 包；但真机/AVD 冒烟仍未做 |
 | P0 | 对齐 submodule commit | **已完成**（`next` 分支按官方 tree 补齐 8 个 gitlink） |
 | P0 | `next.*` 配置闭环 | **已完成**（`flags.prop` → `Plugin.kt` → `BuildConfig` → App，有 `verify_repo.py` 守卫） |
+| P0 | **Native 核心增强**（Zygisk / 隐藏 / 线程 / 掉 root / 泄露，12 组） | **已完成**：10 个 native 文件，`native_audit.py` 12 规则守卫 + rustfmt 解析；**真机验证仍未做** |
+| P0 | native 修复防回滚 | **已完成**：`verify_repo.py` 第 10 项 + 逐条扰动自测 |
 | P1 | 模块快照 | **主机侧已完成**（`next/snapshot.py` 含回滚与篡改拒绝）；**设备侧自动快照未写** |
 | P1 | 更新通道签名校验 | **主机侧已完成**（`next/channel.py` 含 RSA 签名/验签）；**设备侧接入未写** |
 | P1 | 体检报告导出入口 | **已完成**（`NextSection` 导出按钮 + 分享，受 `nextHealthCheck` 控制） |
@@ -102,6 +105,7 @@ next.channelVerify=1
 - 不针对任何具体应用的检测逻辑做绕过（本分支不含特征字符串、黑名单或规避代码）。
 - 不提供预编译二进制、签名密钥或现成刷机包。
 - 不改变 MagiskSU 的权限模型与签名信任链。
+- 不把未经真机 / AVD 验证的 native 改动宣称「运行时正确」；本轮 native 修改只覆盖既有路径的健壮性与资源生命周期，不引入新的 root 能力或对外接口。
 
 ## 5. 风险
 
@@ -112,3 +116,5 @@ next.channelVerify=1
 | `next.*` 配置链路较长 | 任一环缺失（`build.py` / `Plugin.kt` / `build.gradle.kts`）都会让配置静默失效 | `verify_repo.py` 第 6 项强制核对 4 个 flag 的全链路 |
 | 签名信任链 | 自行签名的 release 包会被 Magisk daemon 视为不匹配并卸载 | 按上游 `docs/build.md` 配置 `config.prop` 签名，或使用 debug 构建 |
 | 上游快速迭代 | v31.x 后续可能再次调整 `Config` / 设置页结构 | 改动集中在少数文件，且有 `verify_repo.py` 做回归校验 |
+| native 改动重新编译风险 | Rust nightly / C++ 与 ONDK 版本耦合，静态解析不能替代真编译 | `build-next.yml` 推送后完整构建验证；`native_audit.py` 防止修复被 rebase 回滚 |
+| native 改动未经真机验证 | accept 错误分类、线程池队列、隐藏卸载的运行时行为可能与预期不符 | 只改既有路径的健壮性、不引入新语义；P0 补 AVD 冒烟与 daemon 健康指标 |

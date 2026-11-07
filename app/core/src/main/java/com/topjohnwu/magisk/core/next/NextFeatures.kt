@@ -21,7 +21,7 @@ import java.util.TimeZone
 object NextFeatures {
 
     val BRAND: String = BuildConfig.NEXT_BRAND
-    const val VERSION = "31.1-next.1"
+    const val VERSION = "31.1-next.3"
     const val UPSTREAM_BASELINE = "33bfff7ce7"
     val CHANNEL: String = BuildConfig.NEXT_CHANNEL
 

@@ -114,13 +114,13 @@
   /* ---------- sections ---------- */
   section { padding: clamp(48px, 7vw, 88px) 0 0; }
   .sec-head {
-    display: grid; grid-template-columns: 92px minmax(0, 1fr);
+    display: grid; grid-template-columns: 128px minmax(0, 1fr);
     gap: 24px; align-items: baseline; border-bottom: 1px solid var(--ink);
     padding-bottom: 14px; margin-bottom: 32px;
   }
   .sec-num {
     font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
-    color: var(--vermilion);
+    color: var(--vermilion); white-space: nowrap;
   }
   h2 {
     font-family: var(--serif); font-weight: 400;

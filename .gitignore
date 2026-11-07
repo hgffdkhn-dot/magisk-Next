@@ -19,3 +19,7 @@ out
 
 # Keep Magisk custom skills in repository
 !/.agents/skills/magisk-*/
+
+# magisk-Next: Python toolchain caches
+__pycache__/
+*.py[cod]

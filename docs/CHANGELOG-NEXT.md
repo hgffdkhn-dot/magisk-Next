@@ -27,6 +27,16 @@
 - `app/core/src/main/res/values/strings.xml`、`values-zh-rCN/strings.xml`：各新增 7 条 Next 文案。
 - `scripts/next-build.sh`：**修正参数拼接缺陷**。`build.py` 的 `-r/-v/-c` 是全局参数、必须排在 action 之前；此前 `--release` 被当作 action 透传，既不补默认的 `all`，也会让 `./build.py --release` 只打印帮助并以 1 退出（原 `next-ci.yml` 的完整构建 job 因此跑不通）。现在单独收集全局参数并自动补 `all`。
 
+### 修复（归档快照损伤）
+
+release 归档 zip 不保留 Unix 文件属性，导致 `./build.py` 在 CI 里 `Permission denied`（exit 126）。按官方 git tree `33bfff7ce7` 逐项对齐 `next` 分支：
+
+- 恢复 **10 个** `100755` 可执行位（`build.py`、`app/gradlew`、`scripts/env.py`、`scripts/release.sh` 等）；新增的 `next/*.py` 工具也补上可执行位。
+- `native/src/base/include/rust/cxx.h` 由「内容为路径文本的普通文件」恢复为 **120000 符号链接**（blob sha 与官方一致）。
+- 补齐 **8 个 160000 gitlink**，SHA 与官方锁定的 submodule commit 一致；`bootstrap-submodules.sh` 因此能走 `git submodule update` 锁定版本。
+- `.github/workflows/build-next.yml`：子模块引导去掉 `--shallow`，避免 shallow clone 取不到 gitlink 指向的历史 commit。
+- `main` 分支保持未改动的原始基线，以上修复只叠加在 `next`。
+
 ### 未改动
 
 - 官方 `README.MD`、LICENSE、`.gitmodules`、`docs/` 下的上游文档、`native/` 源码、Gradle 构建脚本、签名与 SU 信任链逻辑。

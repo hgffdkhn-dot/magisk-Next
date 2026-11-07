@@ -63,7 +63,7 @@ next.channelVerify=1
 
 ### 2.4 脚本与 CI
 
-- `scripts/bootstrap-submodules.sh`：兼容「带 gitlink 的完整 clone」和「归档快照无 gitlink」两种情况，后者按 `.gitmodules` 逐个克隆并支持镜像回退。
+- `scripts/bootstrap-submodules.sh`：兼容「带 gitlink 的 `next` 分支」和「无 gitlink 的 `main` 基线」两种情况，前者用 `git submodule update` 锁定官方 commit，后者按 `.gitmodules` 逐个克隆并支持镜像回退；CI 中不加 `--shallow`。
 - `scripts/next-build.sh`：自检 → `build.py` → 产物清单，参数可透传。
 - `scripts/verify-next.sh`：静态校验 + 单测 + 自测，一处入口。
 - `.github/workflows/next-ci.yml`：push/PR 跑秒级静态校验，不需要 SDK。
@@ -75,7 +75,7 @@ next.channelVerify=1
 | 优先级 | 项目 | 说明 | 当前状态 |
 | --- | --- | --- | --- |
 | P0 | Android Gradle 编译验证 | 在装有 JDK 25 + ONDK 的环境跑 `:apk:assembleDebug`，确认 Compose 改动可编译 | **未做**（沙箱无 SDK） |
-| P0 | 对齐 submodule commit | 用 `git clone --recurse-submodules` 重建基线，让 8 个子模块锁定到官方 commit | **未做**（归档快照无 gitlink） |
+| P0 | 对齐 submodule commit | 按官方 git tree 补齐 8 个 gitlink，锁定到官方 commit | **已完成**（`next` 分支按官方 tree 补齐，详见 CHANGELOG-NEXT.md） |
 | P1 | 模块快照执行逻辑 | 开关已有；需要在模块安装前对 `/data/adb/modules` 做状态记录与一键回滚 | 开关与文案已落地，**执行逻辑未写** |
 | P1 | 更新通道签名校验 | 开关已有；需要清单格式定义、公钥内置、验签流程 | 开关与文案已落地，**验签未写** |
 | P1 | 体检报告导出入口 | `exportHealthJson()` 已有；需要在 UI 上提供「导出报告」按钮/分享 | 数据层已有，**UI 入口未接** |
@@ -103,7 +103,7 @@ next.channelVerify=1
 
 | 风险 | 影响 | 缓解 |
 | --- | --- | --- |
-| 基线来自归档快照 | submodule 无 commit 锁定，native 构建可能取到不匹配的第三方库版本 | `bootstrap-submodules.sh` 明确提示；发布前重建基线 |
+| `main` 基线来自归档快照 | 该分支缺可执行位、符号链接与 gitlink，直接在其上构建会失败 | 修复只叠加在 `next`（按官方 tree 对齐）；`bootstrap-submodules.sh` 兼容两种来源 |
 | Kotlin 未编译 | 可能存在编译期类型/import 问题 | `verify_repo.py` 校验资源引用一致性；P0 补编译验证 |
 | `flags.prop` 新增键 | Gradle 侧尚未读取，当前只作为构建期元数据 | `app/build-logic` 需要时再消费，不影响现有构建 |
 | 签名信任链 | 自行签名的 release 包会被 Magisk daemon 视为不匹配并卸载 | 按上游 `docs/build.md` 配置 `config.prop` 签名，或使用 debug 构建 |

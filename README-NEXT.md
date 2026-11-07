@@ -53,7 +53,7 @@ python3 next/health_report.py --demo             # 渲染体检报告
 ## 已知限制
 
 - **未产出可刷入的 APK / boot 镜像**。当前沙箱没有 Android SDK、ONDK 和 JDK 25，`preflight` 会如实报出这三项缺失。完整构建需在 [构建文档](docs/BUILDING-NEXT.md) 描述的环境中执行。
-- 基线源码来自 GitHub release 归档快照，**不含 8 个 git submodule 的内容**，也没有 submodule 的 gitlink 记录。`bootstrap-submodules.sh` 对此做了专门处理；正式发布前建议改用 `git clone --recurse-submodules` 重新对齐上游 commit。
+- 基线源码来自 GitHub release 归档快照，原始 zip **不含 8 个 submodule 内容，且丢失了可执行位、符号链接与 gitlink 记录**。`next` 分支已按官方 git tree（`33bfff7ce7`）补齐：10 个脚本恢复 `100755`、`native/src/base/include/rust/cxx.h` 恢复为符号链接、8 个 gitlink 锁定到官方 commit；`main` 保持未改动的原始快照。`scripts/bootstrap-submodules.sh` 对两种来源都做了处理，CI 里不要用 `--shallow`（取不到 gitlink 指向的历史 commit）。
 - Kotlin 改动通过了静态引用与资源一致性检查，但**未经 Android Gradle 编译**。首次合版请在 Android Studio 里跑一次 `:apk:assembleDebug`。
 - `next.*` 中的 `next.moduleSnapshot` / `next.channelVerify` 目前是构建期标识 + App 侧开关，**模块快照与通道签名校验的执行逻辑属于路线图 P1**，尚未实现。详见 [设计文档](docs/DESIGN.md)。
 

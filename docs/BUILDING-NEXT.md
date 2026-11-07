@@ -102,7 +102,7 @@ python3 -m unittest discover -s tests -v
 
 `build-next.yml` 的几个关键点：
 
-- **子模块引导**：基线来自归档快照，index 里没有 gitlink，`actions/checkout` 的 `submodules: recursive` 对本仓库无效，因此用 `./scripts/bootstrap-submodules.sh --shallow` 按 `.gitmodules` 逐个克隆（直连失败自动回退镜像）。这是本分支与上游 `build.yml` 最大的差异。
+- **子模块引导**：`main` 来自归档快照、没有 gitlink；`next` 已按官方 git tree 补齐 8 个 gitlink。统一用 `./scripts/bootstrap-submodules.sh`：检测到 gitlink 就走 `git submodule update --init --recursive` 锁定官方 commit，否则按 `.gitmodules` 逐个克隆（直连失败自动回退镜像）。**不要加 `--shallow`** —— shallow clone 取不到 gitlink 指向的历史 commit。这是本分支与上游 `build.yml` 最大的差异。
 - **环境**：直接复用上游 composite action `./.github/actions/setup`（`is-asset-build: true`），由它安装 JDK 25、Python、sccache、Gradle 缓存并执行 `build.py ndk` 装 ONDK，与官方 master 保持一致。
 - **配置**：`cp .github/next-ci.prop config.prop`。该文件带 `next.*` 构建标识、只构建 `arm64-v8a` 加速 CI，且**刻意不含签名占位值**——`config.prop.sample` 里的 `keyStore=string` 若被照搬会被当成真实 keystore 导致失败。手动触发时可用 `abi_list` / `build_type` 两个输入覆盖。
 - **产物**：`scripts/next-build.sh` 自动把 `--release` 归到全局参数并补 `all`；构建完成后 `next/integrity.py` 生成并校验 `SHA256SUMS`，`upload-artifact` 上传 `out/` 与符号表。

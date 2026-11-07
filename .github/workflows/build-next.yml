@@ -4,9 +4,10 @@ name: magisk-Next Build
 # 与 next-ci.yml 分工：那条只做秒级静态校验，这条产出真正的 APK / 刷入产物。
 #
 # 与上游 build.yml 的两点差异（都是本分支基线决定的，不是随意改的）：
-#   1. 基线来自 release 归档快照，git index 里没有 submodule gitlink，
-#      所以 actions/checkout 的 submodules: recursive 无效，必须用
-#      scripts/bootstrap-submodules.sh 按 .gitmodules 逐个克隆。
+#   1. 基线来自 release 归档快照：zip 丢失了可执行位、符号链接与 gitlink。
+#      next 分支已按官方 git tree 把它们补齐，但 main（未改动的基线）仍缺失，
+#      所以统一用 scripts/bootstrap-submodules.sh 引导，两种来源都兼容。
+#      注意不能用 --shallow：shallow clone 取不到 gitlink 锁定的历史 commit。
 #   2. 构建配置用 .github/next-ci.prop（带 next.* 标识、不含签名占位）。
 # 环境搭建（JDK 25 / Python / sccache / ONDK）直接复用上游 composite action，
 # 保持与官方 master 一致，上游升级时这里自动跟随。
@@ -45,9 +46,10 @@ jobs:
           submodules: false
           fetch-depth: 0
 
-      - name: 引导 8 个 native 子模块
-        # 归档快照无 gitlink；脚本直连失败时会自动回退到镜像。
-        run: ./scripts/bootstrap-submodules.sh --shallow
+      - name: 引导 8 个 native 子模块（按官方 gitlink 锁定 commit）
+        # 不用 --shallow：gitlink 指向的可能是历史 commit，shallow 取不到。
+        # 脚本检测到 gitlink 会走 git submodule update，失败时自动回退镜像。
+        run: ./scripts/bootstrap-submodules.sh
 
       - name: 复用上游环境（JDK 25 / Python / sccache / Gradle 缓存 / ONDK）
         uses: ./.github/actions/setup

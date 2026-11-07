@@ -16,11 +16,15 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "next"))
 
+import api_audit  # noqa: E402
+import channel  # noqa: E402
 import health_report  # noqa: E402
 import integrity  # noqa: E402
 import module_lint  # noqa: E402
 import next_common as common  # noqa: E402
 import preflight  # noqa: E402
+import snapshot  # noqa: E402
+import verify_repo  # noqa: E402
 
 
 class TestCommon(unittest.TestCase):
@@ -40,7 +44,6 @@ class TestCommon(unittest.TestCase):
             (r / "config.prop").write_text(
                 "version=1\nnext.channel=https://example.com/u.json\n"
                 "next.moduleSnapshot=1\n", encoding="utf-8")
-            # 直接验证前缀剥离逻辑
             props = common.parse_props(r / "config.prop")
             cfg = {k[5:]: v for k, v in props.items() if k.startswith("next.")}
             self.assertEqual(cfg["channel"], "https://example.com/u.json")
@@ -67,10 +70,10 @@ class TestCommon(unittest.TestCase):
 
 class TestSelfTests(unittest.TestCase):
     def test_all_self_tests_pass(self):
-        self.assertEqual(preflight.self_test(), 0)
-        self.assertEqual(module_lint.self_test(), 0)
-        self.assertEqual(integrity.self_test(), 0)
-        self.assertEqual(health_report.self_test(), 0)
+        for mod in (preflight, module_lint, integrity, health_report,
+                    snapshot, channel, api_audit, verify_repo):
+            with self.subTest(mod=mod.__name__):
+                self.assertEqual(mod.self_test(), 0)
 
 
 class TestPreflight(unittest.TestCase):
@@ -100,6 +103,17 @@ class TestModuleLint(unittest.TestCase):
             self.assertFalse([i for i in module_lint.lint_module(d)
                               if i["level"] == common.FAIL])
 
+    def test_symlink_escape_rejected(self):
+        with tempfile.TemporaryDirectory() as td:
+            d = Path(td) / "m"
+            d.mkdir()
+            (d / "module.prop").write_text(
+                "id=m\nname=M\nversion=v1\nversionCode=1\nauthor=a\ndescription=d\n",
+                encoding="utf-8")
+            (d / "leak").symlink_to(Path(td) / "outside")
+            codes = {i["code"] for i in module_lint.lint_module(d)}
+            self.assertIn("SYMLINK_ESCAPE", codes)
+
 
 class TestIntegrity(unittest.TestCase):
     def test_generate_verify_tamper(self):
@@ -114,15 +128,101 @@ class TestIntegrity(unittest.TestCase):
             self.assertIn("HASH_MISMATCH",
                           {i["code"] for i in integrity.verify(d)})
 
+    def test_symlink_not_followed(self):
+        with tempfile.TemporaryDirectory() as td:
+            d = Path(td)
+            (d / "a").write_bytes(b"aaa")
+            (d / "link").symlink_to("a")
+            self.assertNotIn("link", integrity.collect(d))
+            integrity.generate(d)
+            self.assertIn("SYMLINK_SKIPPED",
+                          {i["code"] for i in integrity.verify(d)})
+
 
 class TestHealthReport(unittest.TestCase):
     def test_demo_render(self):
         d = health_report.demo_data()
         self.assertFalse(health_report.validate(d))
+        self.assertEqual(len(d["checks"]), 8)
         md = health_report.render_report(d)
         self.assertIn("| 检查项 |", md)
         self.assertIn("magisk.active", md)
         self.assertIn("结论", md)
+
+    def test_output_creates_parent(self):
+        with tempfile.TemporaryDirectory() as td:
+            out = Path(td) / "nested" / "dir" / "report.md"
+            import subprocess
+            r = subprocess.run(
+                [sys.executable, str(ROOT / "next" / "health_report.py"),
+                 "--demo", "--output", str(out)],
+                capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertTrue(out.is_file())
+
+
+class TestSnapshot(unittest.TestCase):
+    def test_capture_diff_restore(self):
+        with tempfile.TemporaryDirectory() as td:
+            root, mods = Path(td) / "repo", Path(td) / "modules"
+            (mods / "demo").mkdir(parents=True)
+            (mods / "demo" / "module.prop").write_text("id=demo\n", encoding="utf-8")
+            m = snapshot.capture(root, mods, name="ut")
+            self.assertEqual(m["file_count"], 1)
+            self.assertFalse(snapshot.verify(root, m["id"]))
+            self.assertFalse(snapshot.restore(root, m["id"], mods)["applied"])
+            (mods / "demo" / "module.prop").write_text("HACKED\n", encoding="utf-8")
+            self.assertIn("demo/module.prop",
+                          snapshot.diff(root, m["id"], mods)["changed"])
+            plan = snapshot.restore(root, m["id"], mods, force=True)
+            self.assertTrue(plan["applied"])
+            self.assertEqual((mods / "demo" / "module.prop").read_text(),
+                             "id=demo\n")
+
+    def test_tampered_snapshot_refused(self):
+        with tempfile.TemporaryDirectory() as td:
+            root, mods = Path(td) / "repo", Path(td) / "modules"
+            mods.mkdir()
+            (mods / "f").write_text("x", encoding="utf-8")
+            m = snapshot.capture(root, mods)
+            (snapshot.snap_root(root) / m["id"] / "files" / "f").write_text(
+                "BAD", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                snapshot.restore(root, m["id"], mods, force=True)
+
+
+class TestChannel(unittest.TestCase):
+    def test_validate_rejects_insecure(self):
+        d = channel.template()
+        self.assertFalse([i for i in channel.validate(d)
+                          if i["level"] == common.FAIL])
+        bad = dict(d, channel="http://x/y.json", versionCode="abc")
+        codes = {i["code"] for i in channel.validate(bad)}
+        self.assertIn("INSECURE_CHANNEL", codes)
+        self.assertIn("BAD_VERSION_CODE", codes)
+
+    def test_artifact_hash(self):
+        with tempfile.TemporaryDirectory() as td:
+            d = Path(td)
+            apk = d / "app-release.apk"
+            apk.write_bytes(b"apk")
+            manifest = dict(channel.template(), artifacts=[{
+                "name": "app-release.apk", "url": "https://e/apk",
+                "sha256": common.sha256_file(apk), "size": apk.stat().st_size}])
+            self.assertFalse(channel.verify_artifacts(manifest, d))
+            apk.write_bytes(b"bad")
+            self.assertIn("ARTIFACT_HASH_MISMATCH",
+                          {i["code"] for i in channel.verify_artifacts(manifest, d)})
+
+
+class TestApiAudit(unittest.TestCase):
+    def test_all_refs_defined(self):
+        self.assertFalse(api_audit.audit(ROOT))
+
+    def test_extract_refs_catches_fake(self):
+        refs = api_audit.extract_refs("val a = Config.noSuchField\n")
+        self.assertIn("noSuchField", refs["Config"])
+        self.assertNotIn("noSuchField", api_audit.definitions(ROOT)["Config"])
 
 
 class TestRepoLayout(unittest.TestCase):
@@ -134,10 +234,14 @@ class TestRepoLayout(unittest.TestCase):
     def test_python_files_compile(self):
         files = sorted((ROOT / "next").glob("*.py")) + \
             sorted((ROOT / "tests").glob("*.py"))
-        self.assertGreaterEqual(len(files), 6)
+        self.assertGreaterEqual(len(files), 9)
         for f in files:
             with self.subTest(f=f.name):
                 py_compile.compile(str(f), doraise=True)
+
+    def test_repo_checks_all_pass(self):
+        checks = verify_repo.run_all(ROOT)
+        self.assertTrue(all(c["status"] == common.PASS for c in checks), checks)
 
 
 if __name__ == "__main__":

@@ -23,6 +23,11 @@ android {
         buildConfigField("String", "APP_PACKAGE_NAME", "\"com.topjohnwu.magisk\"")
         buildConfigField("int", "APP_VERSION_CODE", "${Config.versionCode}")
         buildConfigField("String", "APP_VERSION_NAME", "\"${Config.version}\"")
+        // magisk-Next: expose build-time next.* flags to the app at runtime
+        buildConfigField("String", "NEXT_BRAND", "\"${Config.nextBrand}\"")
+        buildConfigField("String", "NEXT_CHANNEL", "\"${Config.nextChannel}\"")
+        buildConfigField("boolean", "NEXT_MODULE_SNAPSHOT", "${Config.nextModuleSnapshot}")
+        buildConfigField("boolean", "NEXT_CHANNEL_VERIFY", "${Config.nextChannelVerify}")
         consumerProguardFile("proguard-rules.pro")
     }
 

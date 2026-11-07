@@ -249,4 +249,6 @@
     <string name="next_channel_verify_summary">应用更新前校验通道清单签名</string>
     <string name="next_health_check_title">运行体检</string>
     <string name="next_health_check_summary">汇总 Magisk、Zygisk 与排除列表状态用于诊断</string>
+    <string name="next_export_button">导出体检报告</string>
+    <string name="next_health_disabled">体检已关闭，开启后可导出报告</string>
 </resources>

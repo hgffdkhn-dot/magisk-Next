@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """设备侧体检报告渲染器（magisk-Next health report）。
 
-App 端 NextFeatures.exportHealth() 导出 JSON，本工具在主机侧渲染成 Markdown
-报告，便于提交 issue 或归档。
+App 端 NextFeatures.exportHealthJson() 导出 JSON，本工具在主机侧渲染成 Markdown
+报告，便于提交 issue 或归档。demo 数据与 App 的 collectChecks() 8 个检查项
+保持一致，避免文档与实际导出结果不符。
 
 用法：
     python3 next/health_report.py --input next-health.json
@@ -59,6 +60,8 @@ def render_report(data: dict) -> str:
         f"- 设备：`{data.get('device', 'unknown')}`",
         f"- Android：`{data.get('android', 'unknown')}`",
         f"- 生成时间：`{data.get('generated_at', 'unknown')}`",
+        f"- 更新通道：`{data.get('channel') or '未配置（沿用上游通道）'}`",
+        f"- 运行体检：**{'开启' if data.get('health_enabled') is True else '关闭/未知'}**",
         f"- 结论：**{counts['ok']} 正常 / {counts['warn']} 需关注 / "
         f"{counts['fail']} 异常 / {counts['na']} 不适用**",
         "",
@@ -77,19 +80,30 @@ def render_report(data: dict) -> str:
 
 
 def demo_data() -> dict:
+    """与 NextFeatures.collectChecks() 的 8 个 id 一一对齐。"""
     return {
         "brand": BRAND, "version": NEXT_VERSION,
-        "device": "Pixel 8 Pro / husky", "android": "16 (API 36)",
+        "channel": "https://example.com/magisk-next.json",
+        "health_enabled": True,
+        "device": "Pixel 8 Pro / husky", "android": "API 36 (16)",
         "generated_at": "2026-11-07T08:30:00Z",
         "checks": [
-            {"id": "magisk.active", "status": "ok", "detail": "Magisk 已激活，版本 31.1-next.1", "hint": ""},
-            {"id": "su.available", "status": "ok", "detail": "su 可执行，UID 0", "hint": ""},
-            {"id": "zygisk.enabled", "status": "ok", "detail": "Zygisk 已启用", "hint": ""},
-            {"id": "denylist.configured", "status": "warn", "detail": "DenyList 未强制执行", "hint": "在设置中开启 Enforce DenyList"},
-            {"id": "modules.count", "status": "ok", "detail": "已安装 3 个模块", "hint": ""},
-            {"id": "module.snapshot", "status": "warn", "detail": "模块快照功能未开启", "hint": "开启后可在变更模块前自动快照"},
-            {"id": "boot.slot", "status": "ok", "detail": "当前槽位 _a，备份存在", "hint": ""},
-            {"id": "app.cloak", "status": "na", "detail": "可选 App Cloak 未安装", "hint": "按需安装，见 docs/DESIGN.md"},
+            {"id": "magisk.active", "status": "ok",
+             "detail": "Magisk 已激活，核心版本 31.1-next.1", "hint": ""},
+            {"id": "app.version", "status": "ok",
+             "detail": "31.1-next.1 (1000000)", "hint": ""},
+            {"id": "zygisk.enabled", "status": "ok",
+             "detail": "Zygisk 已启用", "hint": ""},
+            {"id": "zygisk.loaded", "status": "ok",
+             "detail": "Zygisk 已加载", "hint": ""},
+            {"id": "denylist.configured", "status": "warn",
+             "detail": "DenyList 未强制启用", "hint": "在设置中开启 Enforce DenyList"},
+            {"id": "next.module.snapshot", "status": "ok",
+             "detail": "模块变更前自动快照已开启", "hint": ""},
+            {"id": "next.channel.verify", "status": "ok",
+             "detail": "更新通道清单校验已开启", "hint": ""},
+            {"id": "app.cloak", "status": "na",
+             "detail": "可选 App Cloak 插件未安装", "hint": "按需安装，见 docs/DESIGN.md"},
         ],
     }
 
@@ -97,9 +111,10 @@ def demo_data() -> dict:
 def self_test() -> int:
     d = demo_data()
     assert not validate(d), validate(d)
+    assert len(d["checks"]) == 8, "demo 数据必须与 App 的 8 项检查对齐"
     md = render_report(d)
     assert md.startswith("# ") and "| 检查项 |" in md, md
-    assert "module.snapshot" in md and "Pixel 8 Pro" in md
+    assert "next.module.snapshot" in md and "Pixel 8 Pro" in md
     assert validate({}) and validate({"brand": "x", "version": "1",
                                      "checks": [{"id": "a", "status": "bad"}]})
     assert "解析失败" in render_report({"checks": []})
@@ -129,7 +144,12 @@ def main() -> int:
             return 1
     text = render_report(data)
     if args.output:
-        args.output.write_text(text + "\n", encoding="utf-8")
+        try:
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            args.output.write_text(text + "\n", encoding="utf-8")
+        except OSError as e:
+            print(f"写入失败: {e}", file=sys.stderr)
+            return 1
         print(f"已写入 {args.output}")
     else:
         print(text)

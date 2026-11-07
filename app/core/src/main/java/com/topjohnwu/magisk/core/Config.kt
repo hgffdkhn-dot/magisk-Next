@@ -103,9 +103,11 @@ object Config : PreferenceConfig, DBConfig {
     var downloadDir by preference(Key.DOWNLOAD_DIR, "")
     var randName by preference(Key.RAND_NAME, true)
 
-    // magisk-Next: feature switches. Defaults are deliberately conservative.
-    var nextModuleSnapshot by preference(Key.NEXT_MODULE_SNAPSHOT, true)
-    var nextChannelVerify by preference(Key.NEXT_CHANNEL_VERIFY, true)
+    // magisk-Next: feature switches. Defaults come from build-time config
+    // (config.prop -> flags.prop -> BuildConfig.NEXT_*), so distributors can
+    // ship a build with a feature disabled without touching Kotlin code.
+    var nextModuleSnapshot by preference(Key.NEXT_MODULE_SNAPSHOT, BuildConfig.NEXT_MODULE_SNAPSHOT)
+    var nextChannelVerify by preference(Key.NEXT_CHANNEL_VERIFY, BuildConfig.NEXT_CHANNEL_VERIFY)
     var nextHealthCheck by preference(Key.NEXT_HEALTH_CHECK, true)
 
     var checkUpdate

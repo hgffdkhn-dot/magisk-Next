@@ -1,5 +1,63 @@
 # magisk-Next 变更日志
 
+## 31.1-next.2 — 功能增强与缺陷修复
+
+> 事实基线：上一轮的完整构建工作流已在 GitHub Actions 实跑 **success**
+> （run #2，产物 39.6 MB + 符号表 2.8 MB），归档快照的权限/gitlink 修复确认有效。
+> 本轮在已验证的基线上继续增强。详见 [ROADMAP.md](ROADMAP.md)。
+
+### 修掉的缺陷
+
+| 编号 | 问题 | 修复 |
+| --- | --- | --- |
+| D1 | `next.*` 注入 `flags.prop` 后 Gradle / App 从未消费，配置写了不生效 | `Plugin.kt` 加 4 个 getter（含特殊字符转义）、`core/build.gradle.kts` 加 4 个 `buildConfigField`、`Config.kt` 开关默认值改读 `BuildConfig.NEXT_*` |
+| D2 | `Config.nextHealthCheck` 存了值但无人读取 | 控制导出入口显隐，导出 JSON 增加 `health_enabled`，报告渲染显示开关状态 |
+| D3 | `health_report.py --output` 父目录不存在时抛未捕获异常 | 自动建父目录 + 捕获 `OSError` |
+| D4 | demo 报告检查项与 App 实际导出的 8 项不一致 | demo 与 `collectChecks()` 逐项对齐，自测断言 8 项 |
+| D5 | `module_lint` 路径穿越重复报警，漏检可执行位与符号链接逃逸 | 去重；新增 `ID_DIR_MISMATCH`、`BAD_NAME`、`NOT_EXECUTABLE`、`SYMLINK_ESCAPE` |
+| D7 | `integrity.collect()` 会跟随符号链接 | 跳过链接，verify 报 `SYMLINK_SKIPPED` WARN |
+| D8 | 文档仍写「未产出 APK」「Gradle 未读取 flags.prop」 | README / DESIGN / CHANGELOG 同步为事实 |
+| D9 | 静态校验只查资源名，不查上游 Kotlin 符号 | 新增 `api_audit.py`，接入 `verify_repo.py` |
+| D10 | `snapshot.py` 两个连续 `nargs="?"` 位置参数，`verify --root X <sid>` 报 `unrecognized arguments` | 改用 `parse_intermixed_args()`，并加入 `verify-next.sh` 的 CLI 冒烟防回归 |
+
+### 新增能力
+
+- `next/snapshot.py`：模块快照与回滚 —— `capture` / `list` / `show` / `diff` / `verify` /
+  `restore`（默认 dry-run，`--force` 执行且自动先备份当前状态）/ `prune`。含路径穿越防护、
+  符号链接记录、负载篡改检测与拒绝回滚。
+- `next/channel.py`：更新通道清单 —— 格式定义、HTTPS 强制、产物 SHA256 校验、
+  `openssl` RSA 签名/验签（`canonical_bytes` 规范化签名对象）；篡改即验签失败。
+  未提供公钥时明确报 `UNVERIFIED` WARN，不假装验签成功。
+- `next/api_audit.py`：从官方 `Info.kt` / `Config.kt` / `build.gradle.kts` / `strings.xml` /
+  Compose 组件动态提取定义，核对 Next Kotlin 的 27 个上游引用，防止上游重命名导致编译失败。
+- `NextFeatures.kt`：`BRAND` / `CHANNEL` 改读 `BuildConfig.NEXT_*`，`Health` 增加
+  `channel` 与 `health_enabled` 字段并写入导出 JSON。
+- `NextSection.kt`：新增「导出体检报告」入口（写 `cacheDir/next-health.json` + `ACTION_SEND`
+  纯文本分享，带失败 Toast），受 `nextHealthCheck` 开关控制；新增中英文各 2 条文案。
+- `verify_repo.py`：由 6 项扩到 **9 项**（新增 Kotlin API 守卫、`next.*` 配置闭环、
+  工具自测完整性）。
+- `scripts/verify-next.sh`：8 个工具自测 + 快照/通道 **CLI 真实冒烟**。
+- `tests/test_next_tools.py`：单测由 11 个扩到 **21 个**，覆盖快照回滚、验签清单、
+  API 守卫、符号链接防护、输出目录创建。
+- `docs/ROADMAP.md`：能力矩阵、缺陷清单、12 项后续可增加的新功能与优先级。
+
+### 验证记录（本轮实测）
+
+| 检查 | 结果 |
+| --- | --- |
+| `python3 next/verify_repo.py` | **9/9 通过** |
+| `python3 next/api_audit.py` | 27 个上游引用全部有定义 |
+| 8 个工具 `--self-test` | 全部通过（含 openssl RSA 签名/验签/篡改实测） |
+| `python3 -m unittest discover -s tests -v` | **21/21 通过** |
+| `bash scripts/verify-next.sh` | ALL CHECKS PASSED（含快照 capture→diff→verify→restore 冒烟） |
+| `python3 next/health_report.py --output <多级目录>/report.md` | 自动建目录成功 |
+
+### 仍未实现（诚实标注）
+
+- 设备侧自动模块快照与设备侧通道验签：**主机侧工具已完整可用，App 侧自动执行逻辑未写**（P0/P1）。
+- Kotlin 改动仍**未经 Android Gradle 编译**；`api_audit.py` 是静态守卫，不能替代编译。
+- 完整构建由 GitHub Actions 完成，本沙箱仍无 Android SDK / ONDK / JDK 25。
+
 ## 31.1-next.1
 
 基线：`topjohnwu/Magisk` `master @ 33bfff7ce7`（v31.1 之后）。基线 commit 保持未改动，以下均为叠加改动。

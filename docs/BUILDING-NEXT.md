@@ -88,8 +88,21 @@ python3 next/integrity.py generate --dir out
 python3 next/integrity.py verify --dir out
 python3 next/health_report.py --input next-health.json --output report.md
 python3 next/health_report.py --demo
+python3 next/api_audit.py                       # Kotlin 上游 API 引用守卫
+python3 next/snapshot.py capture --modules-dir /path/to/modules --name before
+python3 next/snapshot.py list
+python3 next/snapshot.py diff <id> --modules-dir /path/to/modules
+python3 next/snapshot.py restore <id> --modules-dir /path/to/modules  # 预览，加 --force 执行
+python3 next/channel.py template > next.json
+python3 next/channel.py sign --manifest next.json --private-key priv.pem
+python3 next/channel.py verify --manifest next.json --public-key pub.pem --artifact-dir out
 python3 -m unittest discover -s tests -v
 ```
+
+> `snapshot.py` 与 `channel.py` 是**主机侧工具**，面向模块开发者与分发方；设备上
+> 的自动快照/自动验签尚未实现，App 里两个开关当前影响体检状态与构建期默认值。
+> 通道验签需要系统 `openssl`；未提供 `--public-key` 时会明确报 `UNVERIFIED` WARN，
+> 不会假装验签通过。
 
 ## 4.1 GitHub Actions 工作流
 

@@ -20,6 +20,17 @@ object Config {
     val version: String get() = get("version") ?: "null"
     val abiList: List<String> get() = get("abiList")?.split(",") ?: ABI_SUPPORT_LIST
 
+    // magisk-Next: baked into flags.prop by build.py and consumed by
+    // app/core/build.gradle.kts to generate BuildConfig.NEXT_* constants.
+    // Escape quotes/backslashes because these are inlined into Kotlin source.
+    private fun escaped(key: String, fallback: String): String =
+        (get(key) ?: fallback).replace("\\", "\\\\").replace("\"", "\\\"")
+
+    val nextBrand: String get() = escaped("nextBrand", "magisk-Next")
+    val nextChannel: String get() = escaped("nextChannel", "")
+    val nextModuleSnapshot: Boolean get() = get("nextModuleSnapshot") != "0"
+    val nextChannelVerify: Boolean get() = get("nextChannelVerify") != "0"
+
     // Properties from gradle.properties, should always exist
     val versionCode: Int get() = get("magisk.versionCode")!!.toInt()
 }

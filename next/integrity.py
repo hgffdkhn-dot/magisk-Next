@@ -2,7 +2,7 @@
 """构建产物完整性清单（magisk-Next integrity）。
 
 生成与上游产物同目录的 SHA256SUMS（GNU coreutils 兼容）与 SHA256SUMS.json，
-用于分发前生成、下载后校验。
+用于分发前生成、下载后校验。符号链接不会被跟随或写入清单，校验时以 WARN 提示。
 
 用法：
     python3 next/integrity.py generate [--dir out]
@@ -38,11 +38,20 @@ def _git_head(root: Path) -> str:
         return "unknown"
 
 
+def symlinks(directory: Path) -> list[str]:
+    """列出目录内的符号链接（不跟随），校验时提示未被清单覆盖。"""
+    out = []
+    for p in sorted(directory.rglob("*")):
+        if p.is_symlink() and ".git" not in p.parts:
+            out.append(str(p.relative_to(directory)))
+    return out
+
+
 def collect(directory: Path) -> dict:
-    """收集目录下所有文件的相对路径 -> sha256。"""
+    """收集目录下所有普通文件的相对路径 -> sha256。符号链接跳过。"""
     files = {}
     for p in sorted(directory.rglob("*")):
-        if not p.is_file() or p.name in SKIP_NAMES or ".git" in p.parts:
+        if p.is_symlink() or not p.is_file() or p.name in SKIP_NAMES or ".git" in p.parts:
             continue
         files[str(p.relative_to(directory))] = sha256_file(p)
     return files
@@ -60,6 +69,7 @@ def generate(directory: Path) -> dict:
         "file_count": len(files),
         "manifest": MANIFEST,
         "algorithm": "sha256",
+        "skipped_symlinks": symlinks(directory),
     }
     (directory / META).write_text(
         json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -91,6 +101,10 @@ def verify(directory: Path) -> list:
                                   "文件可能被篡改或传输损坏，请勿刷入"))
     for name in sorted(set(actual) - set(expected)):
         problems.append(issue(WARN, "EXTRA", f"清单外的文件: {name}"))
+    for name in symlinks(directory):
+        problems.append(issue(WARN, "SYMLINK_SKIPPED",
+                              f"符号链接未纳入清单: {name}",
+                              "产物目录应只包含普通文件"))
     return problems
 
 
@@ -115,6 +129,11 @@ def self_test() -> int:
         assert "MISSING" in codes, codes
         (d / "extra.txt").write_text("x", encoding="utf-8")
         assert "EXTRA" in {i["code"] for i in verify(d)}
+
+        # 符号链接不应被跟随，且应给出提示
+        (d / "link.apk").symlink_to("extra.txt")
+        assert "link.apk" not in collect(d), "符号链接不得写入清单"
+        assert "SYMLINK_SKIPPED" in {i["code"] for i in verify(d)}
     print("integrity self-test: OK")
     return 0
 

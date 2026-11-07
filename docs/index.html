@@ -253,7 +253,7 @@
   <header class="masthead">
     <div class="topline">
       <span>Branch dossier / 分支技术档案</span>
-      <span class="stamp">31.1-next.1 · 2026-11-07</span>
+      <span class="stamp">31.1-next.2 · 2026-11-07</span>
     </div>
     <div class="hero">
       <div>
@@ -272,18 +272,18 @@
     <div class="diffbar">
       <span class="minus">--- a/upstream-master</span>
       <span class="plus">+++ b/magisk-Next</span>
-      <span class="meta">19 changed paths · 15 added · 6 modified</span>
+      <span class="meta">9 项校验 · 21 单测 · CI 完整构建 success</span>
     </div>
   </header>
 
   <main id="main">
     <div class="rail-wrap">
       <div class="rail">
-        <div><b class="hl">6/6</b><span>静态一致性</span></div>
-        <div><b>11</b><span>单元测试</span></div>
-        <div><b>4</b><span>工具自测</span></div>
-        <div><b>8</b><span>子模块待引导</span></div>
-        <div><b>0</b><span>预编译产物</span></div>
+        <div><b class="hl">9/9</b><span>静态一致性</span></div>
+        <div><b>21</b><span>单元测试</span></div>
+        <div><b>8</b><span>工具自测</span></div>
+        <div><b>8</b><span>gitlink 已锁定</span></div>
+        <div><b>12</b><span>后续可加功能</span></div>
       </div>
     </div>
 
@@ -304,18 +304,24 @@
 
       <div class="panel" id="p-files" role="tabpanel" aria-labelledby="t-files">
         <div class="filelist">
-          <div class="line add"><span class="mark">+</span><span><span class="path">next/*.py</span> <span class="desc">— 5 个无三方依赖的主机工具 + 公共定义</span></span></div>
-          <div class="line add"><span class="mark">+</span><span><span class="path">tests/test_next_tools.py</span> <span class="desc">— 11 个单元测试</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">next/*.py</span> <span class="desc">— 8 个无三方依赖的主机工具 + 公共定义</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">next/snapshot.py</span> <span class="desc">— 模块快照 / 差异 / 回滚 / 篡改拒绝</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">next/channel.py</span> <span class="desc">— 更新通道清单与 RSA 验签</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">next/api_audit.py</span> <span class="desc">— Kotlin 上游 API 引用守卫</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">docs/ROADMAP.md</span> <span class="desc">— 能力矩阵、缺陷清单、12 项后续新功能</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">tests/test_next_tools.py</span> <span class="desc">— 21 个单元测试</span></span></div>
           <div class="line add"><span class="mark">+</span><span><span class="path">scripts/{bootstrap-submodules,next-build,verify-next}.sh</span></span></div>
           <div class="line add"><span class="mark">+</span><span><span class="path">.github/workflows/next-ci.yml</span></span></div>
           <div class="line add"><span class="mark">+</span><span><span class="path">app/core/.../next/NextFeatures.kt</span> <span class="desc">— 分支标识、8 项体检、JSON 导出</span></span></div>
           <div class="line add"><span class="mark">+</span><span><span class="path">app/apk/.../settings/NextSection.kt</span> <span class="desc">— 自包含设置分区</span></span></div>
           <div class="line add"><span class="mark">+</span><span><span class="path">README-NEXT.md · docs/{ANALYSIS,DESIGN,BUILDING-NEXT,CHANGELOG-NEXT}.md</span></span></div>
           <div class="line mod"><span class="mark">~</span><span><span class="path">build.py</span> <span class="desc">— 三处构建期标识注入 + 4 个 next.* 配置映射与校验</span></span></div>
+          <div class="line mod"><span class="mark">~</span><span><span class="path">Plugin.kt · core/build.gradle.kts · Config.kt</span> <span class="desc">— next.* 配置闭环到 BuildConfig 与开关默认值</span></span></div>
+          <div class="line add"><span class="mark">+</span><span><span class="path">.github/workflows/build-next.yml</span> <span class="desc">— 完整构建与自动发 Release（已实跑 success）</span></span></div>
           <div class="line mod"><span class="mark">~</span><span><span class="path">config.prop.sample</span> <span class="desc">— 4 个可选配置项</span></span></div>
           <div class="line mod"><span class="mark">~</span><span><span class="path">app/core/.../Config.kt</span> <span class="desc">— 3 个 preference 键与开关</span></span></div>
           <div class="line mod"><span class="mark">~</span><span><span class="path">app/apk/.../settings/SettingsScreen.kt</span> <span class="desc">— 仅插入 1 行调用</span></span></div>
-          <div class="line mod"><span class="mark">~</span><span><span class="path">values/strings.xml · values-zh-rCN/strings.xml</span> <span class="desc">— 各 7 条中英文案</span></span></div>
+          <div class="line mod"><span class="mark">~</span><span><span class="path">values/strings.xml · values-zh-rCN/strings.xml</span> <span class="desc">— 各 9 条中英文案</span></span></div>
         </div>
       </div>
 
@@ -325,13 +331,18 @@
           <tbody>
             <tr><td>build.py 语法 / CLI</td><td><code>py_compile</code> · <code>build.py -h</code></td><td><span class="pill ok">通过</span></td></tr>
             <tr><td>构建标识注入</td><td>实跑 <code>dump_flags_app</code> / <code>dump_flags_native</code></td><td><span class="pill ok">已生成 flags.prop / .h / .rs</span></td></tr>
-            <tr><td>仓库一致性</td><td><code>next/verify_repo.py</code> 6 项</td><td><span class="pill ok">6 / 6</span></td></tr>
-            <tr><td>单元测试</td><td><code>unittest discover -s tests</code></td><td><span class="pill ok">11 / 11</span></td></tr>
-            <tr><td>工具自测</td><td>4 × <code>--self-test</code></td><td><span class="pill ok">4 / 4</span></td></tr>
+            <tr><td>仓库一致性</td><td><code>next/verify_repo.py</code> 9 项</td><td><span class="pill ok">9 / 9</span></td></tr>
+            <tr><td>单元测试</td><td><code>unittest discover -s tests</code></td><td><span class="pill ok">21 / 21</span></td></tr>
+            <tr><td>工具自测</td><td>8 × <code>--self-test</code></td><td><span class="pill ok">8 / 8</span></td></tr>
+            <tr><td>Kotlin 上游 API 守卫</td><td><code>next/api_audit.py</code></td><td><span class="pill ok">27 引用有定义</span></td></tr>
+            <tr><td>next.* 配置闭环</td><td>flags.prop → Plugin.kt → BuildConfig</td><td><span class="pill ok">4 / 4</span></td></tr>
+            <tr><td>RSA 签名 / 验签</td><td><code>next/channel.py</code> + openssl</td><td><span class="pill ok">篡改检出</span></td></tr>
+            <tr><td>快照回滚</td><td><code>next/snapshot.py</code> capture→diff→restore</td><td><span class="pill ok">实测通过</span></td></tr>
             <tr><td>shell 语法</td><td><code>bash -n</code> × 3</td><td><span class="pill ok">通过</span></td></tr>
-            <tr><td>资源与引用</td><td>52 个 XML · 7 个 Kotlin 引用</td><td><span class="pill ok">一致</span></td></tr>
-            <tr><td>Android Gradle 编译</td><td>需要 JDK 25 + ONDK</td><td><span class="pill fail">未执行</span></td></tr>
-            <tr><td>完整出包</td><td>需要 Android SDK + 8 个 submodule</td><td><span class="pill fail">未产出</span></td></tr>
+            <tr><td>资源与引用</td><td>52 个 XML · 27 个上游符号引用</td><td><span class="pill ok">一致</span></td></tr>
+            <tr><td>Android Gradle 编译</td><td>GitHub Actions 完整构建</td><td><span class="pill ok">success</span></td></tr>
+            <tr><td>完整出包</td><td>CI 上传 artifact</td><td><span class="pill ok">39.6 MB + 符号表</span></td></tr>
+            <tr><td>真机 / AVD 冒烟</td><td>APK 安装与 Magisk 激活</td><td><span class="pill todo">未做</span></td></tr>
           </tbody>
         </table>
       </div>
@@ -340,22 +351,26 @@
         <table class="data">
           <thead><tr><th>优先级</th><th>项目</th><th>状态</th></tr></thead>
           <tbody>
-            <tr><td>P0</td><td>Android Gradle 编译验证（<code>:apk:assembleDebug</code>）</td><td><span class="pill todo">待环境</span></td></tr>
-            <tr><td>P0</td><td>用 <code>--recurse-submodules</code> 重建基线，锁定 8 个 commit</td><td><span class="pill todo">待环境</span></td></tr>
-            <tr><td>P1</td><td>模块快照执行逻辑（开关与文案已落地）</td><td><span class="pill todo">未实现</span></td></tr>
-            <tr><td>P1</td><td>更新通道清单签名校验（开关与文案已落地）</td><td><span class="pill todo">未实现</span></td></tr>
-            <tr><td>P1</td><td>体检报告 UI 导出入口（数据层已就绪）</td><td><span class="pill todo">未实现</span></td></tr>
+            <tr><td>P0</td><td>Android Gradle 编译验证</td><td><span class="pill ok">CI success</span></td></tr>
+            <tr><td>P0</td><td>锁定 8 个 submodule commit</td><td><span class="pill ok">gitlink 已补齐</span></td></tr>
+            <tr><td>P0</td><td><code>next.*</code> 配置闭环</td><td><span class="pill ok">已完成</span></td></tr>
+            <tr><td>P0</td><td>真机 / AVD 冒烟</td><td><span class="pill todo">未做</span></td></tr>
+            <tr><td>P1</td><td>模块快照（主机侧已完成）</td><td><span class="pill todo">设备侧未写</span></td></tr>
+            <tr><td>P1</td><td>通道验签（主机侧已完成）</td><td><span class="pill todo">设备侧未写</span></td></tr>
+            <tr><td>P1</td><td>体检报告 UI 导出入口</td><td><span class="pill ok">已完成</span></td></tr>
+            <tr><td>P1</td><td>模块兼容性矩阵 / 设置导入导出 / 仓库索引</td><td><span class="pill todo">待开始</span></td></tr>
             <tr><td>P2</td><td>可选 App Cloak 插件，带回 v31.1 移除的隐藏能力</td><td><span class="pill todo">设计阶段</span></td></tr>
             <tr><td>P2</td><td>可复现构建与 SBOM</td><td><span class="pill todo">未开始</span></td></tr>
           </tbody>
         </table>
-        <div class="callout"><strong>诚实边界：</strong>本沙箱有 JDK 20 / Gradle 9.3 / Rust 1.93，但没有 Android SDK、ONDK（定制 Rust 工具链 r30.1）和 JDK 25，也没有 submodule 内容。<code>preflight.py</code> 会如实报出这 3 项 FAIL，因此没有伪造一个「能装但不能用」的 APK。手搓 APK 类工具不适用于 Magisk —— root 能力在 native 侧并打进 boot 镜像，签名还与 daemon 信任链绑定。</div>
+        <div class="callout"><strong>诚实边界：</strong>本沙箱仍无 Android SDK / ONDK / JDK 25，本地不出包；但 GitHub Actions 的完整构建已实跑 <strong>success</strong> 并上传 39.6 MB 产物。模块快照与通道验签目前是<strong>主机侧工具</strong>，设备上的自动执行逻辑尚未实现 —— App 里两个开关只影响体检状态与构建期默认值，这一点在 <a href="ROADMAP.md">ROADMAP.md</a> 里明确列为 P0/P1 缺口。CI 证明了「能编译」，还没有证明「真机可用」。</div>
       </div>
     </section>
 
     <section>
       <div class="sec-head"><span class="sec-num">03 / 索引</span><h2>文档与上手</h2></div>
       <div class="docgrid">
+        <a class="doclink" href="ROADMAP.md"><span><span class="t">功能与路线图</span><br><span class="d">能力矩阵、缺陷记录、12 项后续新功能</span></span><span class="arrow">→</span></a>
         <a class="doclink" href="ANALYSIS.md"><span><span class="t">调研分析</span><br><span class="d">官方架构、基线定位、三层差异数据</span></span><span class="arrow">→</span></a>
         <a class="doclink" href="DESIGN.md"><span><span class="t">设计文档</span><br><span class="d">已实现能力、路线图、风险</span></span><span class="arrow">→</span></a>
         <a class="doclink" href="BUILDING-NEXT.md"><span><span class="t">构建说明</span><br><span class="d">环境要求、submodule、工具链适用性</span></span><span class="arrow">→</span></a>
@@ -368,7 +383,7 @@
 
   <footer>
     <span>magisk-Next · 与 Magisk 官方无关 · 非 Google 官方产品</span>
-    <span>baseline 33bfff7ce7 → next 31.1-next.1</span>
+    <span>baseline 33bfff7ce7 → next 31.1-next.2</span>
   </footer>
 </div>
 

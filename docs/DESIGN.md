@@ -72,16 +72,20 @@ next.channelVerify=1
 
 ## 3. 路线图（未实现，明确列出）
 
-| 优先级 | 项目 | 说明 | 当前状态 |
-| --- | --- | --- | --- |
-| P0 | Android Gradle 编译验证 | 在装有 JDK 25 + ONDK 的环境跑 `:apk:assembleDebug`，确认 Compose 改动可编译 | **未做**（沙箱无 SDK） |
-| P0 | 对齐 submodule commit | 按官方 git tree 补齐 8 个 gitlink，锁定到官方 commit | **已完成**（`next` 分支按官方 tree 补齐，详见 CHANGELOG-NEXT.md） |
-| P1 | 模块快照执行逻辑 | 开关已有；需要在模块安装前对 `/data/adb/modules` 做状态记录与一键回滚 | 开关与文案已落地，**执行逻辑未写** |
-| P1 | 更新通道签名校验 | 开关已有；需要清单格式定义、公钥内置、验签流程 | 开关与文案已落地，**验签未写** |
-| P1 | 体检报告导出入口 | `exportHealthJson()` 已有；需要在 UI 上提供「导出报告」按钮/分享 | 数据层已有，**UI 入口未接** |
-| P2 | 可选 App Cloak 插件 | 以独立可选模块形式带回 v31.1 移除的隐藏/重打包能力，不改主 App 架构 | 设计阶段，见下 |
-| P2 | 模块仓库签名与兼容性矩阵 | 模块发布侧签名、`minMagisk` 与运行时版本匹配 | 未开始 |
-| P2 | 可复现构建 | 固定 ONDK / Gradle / Rust 版本并输出构建 SBOM | 未开始 |
+**完整路线图（12 项后续可增加的新功能、优先级、落点与风险）见 [ROADMAP.md](ROADMAP.md)。**
+下表只保留状态摘要。
+
+| 优先级 | 项目 | 当前状态 |
+| --- | --- | --- |
+| P0 | Android Gradle 编译验证 | **已由 CI 覆盖**：`build-next.yml` 实跑 success 并产出 39.6 MB 包；但真机/AVD 冒烟仍未做 |
+| P0 | 对齐 submodule commit | **已完成**（`next` 分支按官方 tree 补齐 8 个 gitlink） |
+| P0 | `next.*` 配置闭环 | **已完成**（`flags.prop` → `Plugin.kt` → `BuildConfig` → App，有 `verify_repo.py` 守卫） |
+| P1 | 模块快照 | **主机侧已完成**（`next/snapshot.py` 含回滚与篡改拒绝）；**设备侧自动快照未写** |
+| P1 | 更新通道签名校验 | **主机侧已完成**（`next/channel.py` 含 RSA 签名/验签）；**设备侧接入未写** |
+| P1 | 体检报告导出入口 | **已完成**（`NextSection` 导出按钮 + 分享，受 `nextHealthCheck` 控制） |
+| P2 | 可选 App Cloak 插件 | 设计阶段，见下 |
+| P2 | 模块仓库签名与兼容性矩阵 | 未开始（`module_lint.py` 已具备 `minMagisk` 基础） |
+| P2 | 可复现构建 / SBOM / 多 ABI 矩阵 | 未开始 |
 
 ### 关于 App Cloak（隐藏能力）
 
@@ -104,7 +108,7 @@ next.channelVerify=1
 | 风险 | 影响 | 缓解 |
 | --- | --- | --- |
 | `main` 基线来自归档快照 | 该分支缺可执行位、符号链接与 gitlink，直接在其上构建会失败 | 修复只叠加在 `next`（按官方 tree 对齐）；`bootstrap-submodules.sh` 兼容两种来源 |
-| Kotlin 未编译 | 可能存在编译期类型/import 问题 | `verify_repo.py` 校验资源引用一致性；P0 补编译验证 |
-| `flags.prop` 新增键 | Gradle 侧尚未读取，当前只作为构建期元数据 | `app/build-logic` 需要时再消费，不影响现有构建 |
+| Kotlin 未在本沙箱编译 | 可能存在编译期类型/import 问题 | CI 完整构建已实跑 success；`api_audit.py` + `verify_repo.py` 做静态守卫；真机/AVD 冒烟仍待补 |
+| `next.*` 配置链路较长 | 任一环缺失（`build.py` / `Plugin.kt` / `build.gradle.kts`）都会让配置静默失效 | `verify_repo.py` 第 6 项强制核对 4 个 flag 的全链路 |
 | 签名信任链 | 自行签名的 release 包会被 Magisk daemon 视为不匹配并卸载 | 按上游 `docs/build.md` 配置 `config.prop` 签名，或使用 debug 构建 |
 | 上游快速迭代 | v31.x 后续可能再次调整 `Config` / 设置页结构 | 改动集中在少数文件，且有 `verify_repo.py` 做回归校验 |

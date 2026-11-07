@@ -2,6 +2,8 @@
 """Magisk 模块静态校验器（magisk-Next module lint）。
 
 在模块安装/发布前检查 module.prop 与目录结构，避免常见的坏模块。
+除原有字段检查外，还覆盖：目录名/id 一致性、脚本可执行位（归档 zip 常丢失）、
+符号链接逃逸、name 字段合法性。
 
 用法：
     python3 next/module_lint.py <模块目录> [<模块目录2> ...]
@@ -13,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -48,11 +51,24 @@ def lint_module(path: Path) -> list:
                                   f"添加 {key}=<值>"))
 
     mid = fields.get("id", "")
-    if mid and not MODULE_ID_RE.match(mid):
+    bad_id = bool(mid and not MODULE_ID_RE.match(mid))
+    if bad_id:
         problems.append(issue(FAIL, "BAD_ID", f"id 不合法: {mid!r}",
                               "以字母开头，仅含字母/数字/./_/-，长度 3-64"))
-    if mid and any(ch in mid for ch in ("/", "\\", "..")):
-        problems.append(issue(FAIL, "PATH_TRAVERSAL", f"id 含路径分隔符: {mid!r}"))
+    # 仅在 id 本身合法时才单独报路径穿越，避免与 BAD_ID 重复刷屏
+    if mid and not bad_id and ".." in mid:
+        problems.append(issue(FAIL, "PATH_TRAVERSAL",
+                              f"id 含路径穿越片段: {mid!r}",
+                              "模块 id 不允许出现 .."))
+    if mid and root.name != mid and not root.name.startswith("."):
+        problems.append(issue(WARN, "ID_DIR_MISMATCH",
+                              f"目录名 {root.name!r} 与 id {mid!r} 不一致",
+                              "Magisk 以目录名定位模块，建议保持一致"))
+
+    name = fields.get("name", "")
+    if name and (any(ord(ch) < 32 for ch in name) or len(name) > 80):
+        problems.append(issue(WARN, "BAD_NAME",
+                              "name 含控制字符或超过 80 字符"))
 
     vc = fields.get("versionCode", "")
     if vc:
@@ -94,6 +110,28 @@ def lint_module(path: Path) -> list:
                 problems.append(issue(WARN, "NO_SHEBANG",
                                       f"{script} 缺少 shebang",
                                       "首行建议 #!/system/bin/sh"))
+
+    # 可执行位：release 归档 zip 不保留 Unix 权限，是最常见的隐蔽故障
+    for s in [root / UPDATE_BINARY, *(root / n for n in OPTIONAL_SCRIPTS)]:
+        if s.is_file() and not (s.stat().st_mode & 0o111):
+            problems.append(issue(WARN, "NOT_EXECUTABLE",
+                                  f"{s.name} 缺少可执行位",
+                                  "chmod +x；从 zip 解包的模块常丢失执行位"))
+
+    # 符号链接逃逸：不能指向模块目录之外（防读取/覆盖宿主文件）
+    base = str(root.resolve())
+    for p in root.rglob("*"):
+        if not p.is_symlink():
+            continue
+        try:
+            target = str((p.parent / os.readlink(p)).resolve())
+            if os.path.commonpath([base, target]) != base:
+                problems.append(issue(FAIL, "SYMLINK_ESCAPE",
+                                      f"符号链接指向模块目录之外: {p.relative_to(root)}",
+                                      "模块内符号链接只能指向模块自身文件"))
+        except (OSError, ValueError):
+            problems.append(issue(WARN, "SYMLINK_BROKEN",
+                                  f"无法解析符号链接: {p.relative_to(root)}"))
     return problems
 
 
@@ -106,6 +144,7 @@ def self_test() -> int:
             "author=next\ndescription=A demo module\nminMagisk=31100\n",
             encoding="utf-8")
         (good / UPDATE_BINARY).write_text("#!/system/bin/sh\n", encoding="utf-8")
+        (good / UPDATE_BINARY).chmod(0o755)
         (good / "system" / "etc").mkdir(parents=True)
         (good / "system" / "etc" / "demo").write_text("x", encoding="utf-8")
         p = lint_module(good)
@@ -122,6 +161,24 @@ def self_test() -> int:
         empty = Path(td) / "empty"
         empty.mkdir()
         assert lint_module(empty)[0]["code"] == "NO_MODULE_PROP"
+
+        # 新增检查：不可执行的 update-binary 与逃逸符号链接
+        noexec = Path(td) / "noexec"
+        (noexec / "META-INF/com/google/android").mkdir(parents=True)
+        (noexec / "module.prop").write_text(
+            "id=noexec\nname=N\nversion=v1\nversionCode=1\nauthor=a\ndescription=d\n",
+            encoding="utf-8")
+        (noexec / UPDATE_BINARY).write_text("#!/system/bin/sh\n", encoding="utf-8")
+        (noexec / UPDATE_BINARY).chmod(0o644)
+        assert "NOT_EXECUTABLE" in {i["code"] for i in lint_module(noexec)}
+
+        esc = Path(td) / "escape"
+        esc.mkdir()
+        (esc / "module.prop").write_text(
+            "id=escape\nname=E\nversion=v1\nversionCode=1\nauthor=a\ndescription=d\n",
+            encoding="utf-8")
+        (esc / "leak").symlink_to(Path(td) / "outside.txt")
+        assert "SYMLINK_ESCAPE" in {i["code"] for i in lint_module(esc)}
     print("module_lint self-test: OK")
     return 0
 

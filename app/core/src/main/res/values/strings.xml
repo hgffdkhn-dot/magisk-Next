@@ -249,4 +249,6 @@
     <string name="next_channel_verify_summary">Validate the update manifest signature before applying an update</string>
     <string name="next_health_check_title">Health check</string>
     <string name="next_health_check_summary">Collect Magisk, Zygisk and DenyList status for diagnostics</string>
+    <string name="next_export_button">Export health report</string>
+    <string name="next_health_disabled">Health check is off — enable it to export a report</string>
 </resources>

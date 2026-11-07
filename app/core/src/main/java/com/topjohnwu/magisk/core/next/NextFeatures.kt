@@ -12,14 +12,18 @@ import java.util.TimeZone
 /**
  * magisk-Next 分支标识与设备体检数据。
  *
- * 刻意只依赖 Kotlin 标准库 + Android/Java 基础类 + 项目内已有的 Config/Info，
+ * 刻意只依赖 Kotlin 标准库 + Android/Java 基础类 + 项目内已有的 Config/Info/BuildConfig，
  * 不引入新的三方依赖，方便在上游合版时整体保留或整体移除。
+ *
+ * BRAND / CHANNEL 与两个开关的默认值来自构建期 config.prop（经 flags.prop 与
+ * Gradle BuildConfig 传递），因此分发方无需改 Kotlin 即可定制分支标识。
  */
 object NextFeatures {
 
-    const val BRAND = "magisk-Next"
+    val BRAND: String = BuildConfig.NEXT_BRAND
     const val VERSION = "31.1-next.1"
     const val UPSTREAM_BASELINE = "33bfff7ce7"
+    val CHANNEL: String = BuildConfig.NEXT_CHANNEL
 
     const val STATUS_OK = "ok"
     const val STATUS_WARN = "warn"
@@ -36,6 +40,8 @@ object NextFeatures {
     data class Health(
         val brand: String = BRAND,
         val version: String = VERSION,
+        val channel: String = CHANNEL,
+        val healthEnabled: Boolean = Config.nextHealthCheck,
         val device: String,
         val android: String,
         val generatedAt: String,
@@ -110,6 +116,8 @@ object NextFeatures {
         sb.append('{')
         sb.append("\"brand\":").append(q(h.brand)).append(',')
         sb.append("\"version\":").append(q(h.version)).append(',')
+        sb.append("\"channel\":").append(q(h.channel)).append(',')
+        sb.append("\"health_enabled\":").append(h.healthEnabled).append(',')
         sb.append("\"device\":").append(q(h.device)).append(',')
         sb.append("\"android\":").append(q(h.android)).append(',')
         sb.append("\"generated_at\":").append(q(h.generatedAt)).append(',')
